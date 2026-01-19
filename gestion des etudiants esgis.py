@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog, filedialog
+import sys
 import sqlite3
 import json
 import webbrowser
@@ -34,7 +35,10 @@ class LoginWindow:
         
         # Icône de la fenêtre de connexion
         try:
-            base_folder = os.path.dirname(os.path.abspath(__file__))
+            if getattr(sys, 'frozen', False):
+                base_folder = os.path.dirname(sys.executable)
+            else:
+                base_folder = os.path.dirname(os.path.abspath(__file__))
             logo_path = os.path.join(base_folder, "logo.png")
             ico_path = os.path.join(base_folder, "logo.ico")
             
@@ -110,7 +114,7 @@ class LoginWindow:
 class GestionEtudiantsApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Gestion des Étudiants - ESGIS")
+        self.root.title("Gestion des Étudiants - ESGIS (Version Moderne)")
         self.root.geometry("1400x800")
         self.root.attributes('-alpha', 0.0)
         
@@ -135,7 +139,10 @@ class GestionEtudiantsApp:
         
         # Icône de la fenêtre principale
         try:
-            base_folder = os.path.dirname(os.path.abspath(__file__))
+            if getattr(sys, 'frozen', False):
+                base_folder = os.path.dirname(sys.executable)
+            else:
+                base_folder = os.path.dirname(os.path.abspath(__file__))
             logo_path = os.path.join(base_folder, "logo.png")
             ico_path = os.path.join(base_folder, "logo.ico")
 
@@ -1251,6 +1258,13 @@ class GestionEtudiantsApp:
 
 
 if __name__ == "__main__":
+    # Activer le support Haute Définition (High DPI) pour éviter le flou sur Windows
+    try:
+        from ctypes import windll
+        windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
     root = tk.Tk()
     root.withdraw() # Cacher la fenêtre principale au démarrage
     

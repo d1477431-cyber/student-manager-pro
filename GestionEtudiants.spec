@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['interface_etudiants.py'],
+    ['gestion des etudiants esgis.py'],
     pathex=[],
     binaries=[],
     datas=[],
