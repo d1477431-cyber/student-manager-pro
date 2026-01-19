@@ -1,0 +1,36 @@
+[
+    {
+        "matricule": 1,
+        "nom": "Dod",
+        "prenom": "Dodo",
+        "age": 18,
+        "note": [
+            12.0,
+            15.0
+        ],
+        "photo": "photos\\1.jpg",
+        "date_ajout": "16/01/2026 06:48"
+    },
+    {
+        "matricule": 12357756,
+        "nom": "Jule",
+        "prenom": "Jule",
+        "age": 18,
+        "note": [
+            15.0
+        ],
+        "photo": "photos\\12357756.jpg",
+        "date_ajout": "16/01/2026 19:33"
+    },
+    {
+        "matricule": 1234674,
+        "nom": "Vs",
+        "prenom": "Code",
+        "age": 40,
+        "note": [
+            20.0
+        ],
+        "photo": "",
+        "date_ajout": "16/01/2026 19:54"
+    }
+]
