@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.spec
+etudiants.db
+photos/
+temp/
+updater.bat
+*.new
+.vscode/
+*.exe
+*.db
