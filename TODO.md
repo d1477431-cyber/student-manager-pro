@@ -1,11 +1,11 @@
 # TODO — Transformer gestionnaire en logiciel PRO (Tkinter)
 
 ## Étape 1 — Préparer l’architecture
-- [ ] Créer un dossier `gestionnaire_pro/`.
-- [ ] Ajouter une structure de packages: `ui/`, `core/`, `config/`.
+- [x] Créer un dossier `core/`.
+- [x] Ajouter une structure de packages initiale.
 
 ## Étape 2 — Extraire la logique métier
-- [ ] Créer `core/db.py` avec `StudentRepository` (init DB, charger, CRUD, migration JSON->SQLite, sauvegarde JSON).
+- [x] Créer `core/db.py` (init DB, sessions, logs, sécurité).
 - [ ] Créer `core/validation.py` avec `StudentValidator` (notes 0..20, age 15..40, parsing notes, format matricule).
 - [ ] Créer `core/calculs.py` (moyenne, mention/appréciation, top 5).
 
@@ -25,4 +25,3 @@
 ## Étape 6 — QA
 - [ ] Tester: login, ajout/modif/suppression, photo, recherche, tri, menu contextuel, export CSV, dashboard graphs, toggle thème.
 - [ ] Corriger les régressions.
-

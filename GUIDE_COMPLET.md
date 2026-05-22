@@ -1,8 +1,8 @@
-# 📖 Guide Complet - ESGIS Manager PRO
+# 📖 Guide Complet - Student Manager PRO
 
 ## 🎯 Vue d'Ensemble
 
-ESGIS Manager PRO est une application moderne de **gestion des étudiants** avec interface élégante, fonctionnalités complètes et design professionnel.
+Student Manager PRO est une application moderne de **gestion des étudiants** avec interface élégante, fonctionnalités complètes et design professionnel.
 
 ---
 

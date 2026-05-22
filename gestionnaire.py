@@ -2,11 +2,13 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import sys
 import sqlite3
-try:
-    import mysql.connector # pip install mysql-connector-python
-except ImportError:
-    mysql = None
-from contextlib import contextmanager
+
+# Import de la logique métier extraite
+from core.db import (
+    db_session, setup_database, hash_password, log_event, 
+    DB_P, DB_TYPE, DB_PATH
+)
+
 import json
 import webbrowser
 import os
@@ -17,8 +19,20 @@ import cv2
 import hashlib
 import threading
 import urllib.request
+import logging
 import subprocess
 from PIL import Image, ImageTk  # pip install pillow
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+
+# --- CONFIGURATION DU LOGGING ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # --- CONFIGURATION DES CHEMINS ---
 if getattr(sys, 'frozen', False):
@@ -36,162 +50,14 @@ PHOTOS_DIR = os.path.join(DATA_DIR, "photos")
 BASE_DIR = DATA_DIR
 
 # --- CONFIGURATION BRANDING ---
-APP_NAME = "ESGIS Manager PRO"
-APP_VERSION = "v2.0.4"
-VERSION_URL = "https://raw.githubusercontent.com/VOTRE_USER/VOTRE_REPO/main/version.json"
-UPDATE_URL = "https://raw.githubusercontent.com/VOTRE_USER/VOTRE_REPO/main/gestionnaire.py"
+APP_NAME = "Student Manager PRO"
+APP_VERSION = "v2.1.0"
+GITHUB_USER = "VOTRE_NOM_GITHUB"
+GITHUB_REPO = "NOM_DU_REPO"
+VERSION_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/version.json"
+UPDATE_URL = f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/main/gestionnaire.py"
 APP_ICON = os.path.join(ASSETS_DIR, "app_icon.ico")
 APP_LOGO = os.path.join(ASSETS_DIR, "logo.png")
-
-# --- CONFIGURATION BASE DE DONNÉES (MULTI-UTILISATEUR) ---
-DB_TYPE = "sqlite" # Passez à "mysql" pour une base de données distante
-DB_CONFIG = {
-    "mysql": {
-        "host": "votre-serveur.com",
-        "user": "admin_esgis",
-        "password": "votre_mot_de_passe",
-        "database": "esgis_manager",
-        "port": 3306
-    }
-}
-
-def get_db_connection():
-    """Initialise la connexion selon le moteur choisi"""
-    if DB_TYPE == "mysql":
-        if not mysql:
-            raise ImportError("Le pilote MySQL est absent. Exécutez : pip install mysql-connector-python")
-        return mysql.connector.connect(**DB_CONFIG["mysql"])
-    return sqlite3.connect(DB_PATH)
-
-def get_db_p():
-    """Retourne le marqueur de paramètre approprié (MySQL: %s, SQLite: ?)"""
-    return "%s" if DB_TYPE == "mysql" else "?"
-
-DB_P = get_db_p()
-
-@contextmanager
-def db_session():
-    """Gère le cycle de vie d'une connexion (Commit/Rollback/Close)"""
-    conn = get_db_connection()
-    try:
-        yield conn
-        conn.commit()
-    except Exception as e:
-        if conn: conn.rollback()
-        raise e
-    finally:
-        if conn: conn.close()
-
-if not os.path.exists(PHOTOS_DIR):
-    os.makedirs(PHOTOS_DIR)
-
-# Bibliothèques ReportLab pour PDF
-from reportlab.lib.pagesizes import A4, portrait, landscape
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm, mm
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-import matplotlib.pyplot as plt # pip install matplotlib
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-def hash_password(password):
-    """Hache le mot de passe avec un 'Salt' pour renforcer la sécurité SHA-256"""
-    salt = "esgis_manager_pro_security_2026"
-    return hashlib.sha256((password + salt).encode()).hexdigest()
-
-def log_event(username, event, details=""):
-    """Enregistre un événement de sécurité dans le journal (Journal des connexions)"""
-    try:
-        with db_session() as conn:
-            cursor = conn.cursor()
-            query = f"INSERT INTO logs (timestamp, event, username, details) VALUES ({DB_P}, {DB_P}, {DB_P}, {DB_P})"
-            cursor.execute(query, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), event, username, details))
-    except Exception as e:
-        print(f"Erreur de journalisation: {e}")
-
-def setup_database():
-    """Initialise la base de données SQLite et crée les tables nécessaires"""
-    try:
-        with db_session() as conn:
-            cursor = conn.cursor()
-            
-            PK_TYPE = "VARCHAR(50) PRIMARY KEY" if DB_TYPE == "mysql" else "TEXT PRIMARY KEY"
-            AI_TYPE = "INT AUTO_INCREMENT PRIMARY KEY" if DB_TYPE == "mysql" else "INTEGER PRIMARY KEY AUTOINCREMENT"
-            REP_CMD = "REPLACE INTO" if DB_TYPE == "mysql" else "INSERT OR REPLACE INTO"
-            
-            # Table des étudiants
-            cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS etudiants (
-                    matricule {PK_TYPE},
-                    nom TEXT,
-                    prenom TEXT,
-                    age INTEGER,
-                    note TEXT,
-                    photo TEXT,
-                    date_ajout TEXT,
-                    email TEXT,
-                    telephone TEXT,
-                    statut TEXT DEFAULT 'Actif',
-                    filiere TEXT,
-                    niveau TEXT, -- Correction: la virgule manquante et la duplication de 'niveau TEXT' ont été corrigées
-                    frais_scolarite REAL DEFAULT 500000
-                )
-            """)
-            
-            # Table des utilisateurs
-            cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY,
-                    password_hash TEXT,
-                    role TEXT
-                )
-            """)
-            
-            # Insertion des utilisateurs par défaut si la table est vide
-            default_users = [
-                ("dodo", hash_password("dodo"), "Admin"),
-                ("sec", hash_password("sec123"), "Secrétaire"),
-                ("prof", hash_password("prof123"), "Professeur")
-            ]
-            
-            for user_data in default_users:
-                cursor.execute(f"{REP_CMD} users (username, password_hash, role) VALUES ({DB_P}, {DB_P}, {DB_P})", user_data)
-            
-            # Table du journal de sécurité (Audit Trail)
-            cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS logs (
-                    id {AI_TYPE},
-                    timestamp TEXT,
-                    event TEXT,
-                    username TEXT,
-                    details TEXT
-                )
-            """)
-            
-            # Table des paiements
-            cursor.execute(f"""
-                CREATE TABLE IF NOT EXISTS paiements (
-                    id {AI_TYPE},
-                    matricule TEXT,
-                    montant REAL,
-                    date_paiement TEXT,
-                    type_paiement TEXT,
-                    commentaire TEXT,
-                    FOREIGN KEY (matricule) REFERENCES etudiants(matricule)
-                )
-            """)
-            
-            # Migrations pour etudiants (ajout progressif de colonnes si nécessaire)
-            migrations = [("email", "TEXT"), ("telephone", "TEXT"), ("statut", "TEXT DEFAULT 'Actif'"), ("filiere", "TEXT"), ("niveau", "TEXT"), ("frais_scolarite", "REAL DEFAULT 500000")]
-            for col_name, col_type in migrations:
-                try:
-                    cursor.execute(f"ALTER TABLE etudiants ADD COLUMN {col_name} {col_type}")
-                except Exception: pass
-            
-            conn.commit()
-    except Exception as e:
-        print(f"Erreur d'initialisation de la base de données: {e}")
 
 def set_window_icon(window):
     """Applique l'icône favicon à une fenêtre"""
@@ -332,15 +198,22 @@ class LoginWindow:
         try:
             with db_session() as conn:
                 cursor = conn.cursor()
-                query = f"SELECT role FROM users WHERE username = {DB_P} AND password_hash = {DB_P}"
-                cursor.execute(query, (user, hashed_pw))
+                query = f"SELECT role, theme FROM users WHERE username = {DB_P} AND password_hash = {DB_P}"
+                try:
+                    cursor.execute(query, (user, hashed_pw))
+                except sqlite3.OperationalError as e:
+                    if "no such column: theme" in str(e).lower():
+                        cursor.execute(f"SELECT role FROM users WHERE username = {DB_P} AND password_hash = {DB_P}", (user, hashed_pw))
+                    else:
+                        raise
                 result = cursor.fetchone()
                 
             if result:
                 role = result[0]
+                theme = result[1] if len(result) > 1 and result[1] else 'dark'
                 log_event(user, "LOGIN_SUCCESS", f"Accès autorisé - Rôle: {role}")
                 self.window.destroy()
-                self.on_success(user, role)
+                self.on_success(user, role, theme)
             else:
                 log_event(user, "LOGIN_FAILURE", "Identifiants invalides")
                 messagebox.showerror("Erreur", "Identifiants incorrects\n", parent=self.window)
@@ -351,7 +224,7 @@ class LoginWindow:
         self.root.destroy()
 
 class GestionEtudiantsApp:
-    def __init__(self, root, username="Utilisateur", role="Professeur"):
+    def __init__(self, root, username="Utilisateur", role="Professeur", user_theme="dark"):
         self.root = root
         self.root.title(f"{APP_NAME} {APP_VERSION}")
         self.username = username # Stocke le nom d'utilisateur
@@ -370,54 +243,154 @@ class GestionEtudiantsApp:
 
         self.root.attributes('-alpha', 0.0)
         
-        # Palettes de couleurs (Thèmes Ultra Modernes)
-        self.themes = {
+        # Thèmes disponibles et métadonnées d’affichage
+        self.theme_data = {
             "dark": {
-                "bg_main": "#0F172A", "bg_panel": "#1E293B", "bg_input": "#334155",
-                "bg_header": "#0F172A", "fg_text": "#CBD5E1", "fg_head": "#F8FAFC",
-                "accent": "#38BDF8", "success": "#4ADE80", "warning": "#FBBF24",
-                "danger": "#F87171", "border": "#475569",
-                "badge_bg": "#FBBF24", "badge_fg": "#0F172A"
+                "label": "🌙  Mode Sombre (Slate)", "preview": "#1E293B",
+                "colors": {
+                    "bg_main": "#0F172A", "bg_panel": "#1E293B", "bg_input": "#334155",
+                    "bg_header": "#0F172A", "fg_text": "#CBD5E1", "fg_head": "#F8FAFC",
+                    "accent": "#38BDF8", "success": "#4ADE80", "warning": "#FBBF24",
+                    "danger": "#F87171", "border": "#475569",
+                    "badge_bg": "#FBBF24", "badge_fg": "#0F172A"
+                }
             },
             "light": {
-                "bg_main": "#F1F5F9", "bg_panel": "#FFFFFF", "bg_input": "#E2E8F0",
-                "bg_header": "#F8FAFC", "fg_text": "#334155", "fg_head": "#0F172A",
-                "accent": "#0EA5E9", "success": "#22C55E", "warning": "#F59E0B",
-                "danger": "#EF4444", "border": "#CBD5E1",
-                "badge_bg": "#0EA5E9", "badge_fg": "#FFFFFF"
+                "label": "☀️  Mode Clair (Snow)", "preview": "#0EA5E9",
+                "colors": {
+                    "bg_main": "#F1F5F9", "bg_panel": "#FFFFFF", "bg_input": "#E2E8F0",
+                    "bg_header": "#F8FAFC", "fg_text": "#334155", "fg_head": "#0F172A",
+                    "accent": "#0EA5E9", "success": "#22C55E", "warning": "#F59E0B",
+                    "danger": "#EF4444", "border": "#CBD5E1",
+                    "badge_bg": "#0EA5E9", "badge_fg": "#FFFFFF"
+                }
+            },
+            "nature": {
+                "label": "🌿  Mode Nature (Emerald)", "preview": "#065F46",
+                "colors": {
+                    "bg_main": "#064E3B", "bg_panel": "#065F46", "bg_input": "#047857",
+                    "bg_header": "#064E3B", "fg_text": "#D1FAE5", "fg_head": "#ECFDF5",
+                    "accent": "#10B981", "success": "#34D399", "warning": "#FCD34D",
+                    "danger": "#F87171", "border": "#059669",
+                    "badge_bg": "#10B981", "badge_fg": "#064E3B"
+                }
+            },
+            "amethyst": {
+                "label": "💎  Mode Améthyste (Purple)", "preview": "#4C1D95",
+                "colors": {
+                    "bg_main": "#2E1065", "bg_panel": "#4C1D95", "bg_input": "#5B21B6",
+                    "bg_header": "#2E1065", "fg_text": "#E9D5FF", "fg_head": "#F5F3FF",
+                    "accent": "#A78BFA", "success": "#34D399", "warning": "#FBBF24",
+                    "danger": "#F87171", "border": "#7C3AED",
+                    "badge_bg": "#C084FC", "badge_fg": "#2E1065"
+                }
+            },
+            "sunset": {
+                "label": "🌅  Mode Sunset (Warm)", "preview": "#7C2D12",
+                "colors": {
+                    "bg_main": "#450A0A", "bg_panel": "#7C2D12", "bg_input": "#9A3412",
+                    "bg_header": "#450A0A", "fg_text": "#FFEDD5", "fg_head": "#FFF7ED",
+                    "accent": "#FB923C", "success": "#4ADE80", "warning": "#FBBF24",
+                    "danger": "#F87171", "border": "#C2410C",
+                    "badge_bg": "#FB923C", "badge_fg": "#450A0A"
+                }
+            },
+            "forest": {
+                "label": "🌲  Mode Forêt (Forest)", "preview": "#22C55E",
+                "colors": {
+                    "bg_main": "#0B3D2E", "bg_panel": "#14532D", "bg_input": "#166534",
+                    "bg_header": "#0B3D2E", "fg_text": "#D9F7E8", "fg_head": "#EFFAF5",
+                    "accent": "#22C55E", "success": "#4ADE80", "warning": "#FACC15",
+                    "danger": "#F97316", "border": "#15803D",
+                    "badge_bg": "#22C55E", "badge_fg": "#0B3D2E"
+                }
+            },
+            "sahara": {
+                "label": "🏜️  Mode Sahara (Desert)", "preview": "#F59E0B",
+                "colors": {
+                    "bg_main": "#7C510A", "bg_panel": "#A16207", "bg_input": "#C2410C",
+                    "bg_header": "#7C510A", "fg_text": "#FFFBEB", "fg_head": "#FFFAF0",
+                    "accent": "#F59E0B", "success": "#22C55E", "warning": "#FBBF24",
+                    "danger": "#DC2626", "border": "#92400E",
+                    "badge_bg": "#F59E0B", "badge_fg": "#7C510A"
+                }
+            },
+            "coffee": {
+                "label": "☕  Mode Coffee (Retro)", "preview": "#D97706",
+                "colors": {
+                    "bg_main": "#2B1B0F", "bg_panel": "#432F23", "bg_input": "#71503E",
+                    "bg_header": "#2B1B0F", "fg_text": "#F5E6D3", "fg_head": "#FFF7ED",
+                    "accent": "#D97706", "success": "#4ADE80", "warning": "#FBBF24",
+                    "danger": "#EF4444", "border": "#7C2D12",
+                    "badge_bg": "#D97706", "badge_fg": "#2B1B0F"
+                }
+            },
+            "ocean": {
+                "label": "🌊  Mode Océan (Blue)", "preview": "#38BDF8",
+                "colors": {
+                    "bg_main": "#0E3B66", "bg_panel": "#164A8A", "bg_input": "#1D4E89",
+                    "bg_header": "#0E3B66", "fg_text": "#E0F2FE", "fg_head": "#F8FAFC",
+                    "accent": "#38BDF8", "success": "#22C55E", "warning": "#F59E0B",
+                    "danger": "#FB7185", "border": "#1E40AF",
+                    "badge_bg": "#38BDF8", "badge_fg": "#0E3B66"
+                }
+            },
+            "rose": {
+                "label": "🌸  Mode Rose (Blush)", "preview": "#F472B6",
+                "colors": {
+                    "bg_main": "#311D3F", "bg_panel": "#4C1C74", "bg_input": "#6D28D9",
+                    "bg_header": "#311D3F", "fg_text": "#F5F3FF", "fg_head": "#FFFFFF",
+                    "accent": "#F472B6", "success": "#34D399", "warning": "#FCD34D",
+                    "danger": "#F87171", "border": "#8B5CF6",
+                    "badge_bg": "#F472B6", "badge_fg": "#311D3F"
+                }
+            },
+            "aurora": {
+                "label": "🌌  Mode Aurora (Glow)", "preview": "#7C3AED",
+                "colors": {
+                    "bg_main": "#0F172A", "bg_panel": "#1E293B", "bg_input": "#475569",
+                    "bg_header": "#0F172A", "fg_text": "#E2E8F0", "fg_head": "#F8FAFC",
+                    "accent": "#7C3AED", "success": "#34D399", "warning": "#F59E0B",
+                    "danger": "#EF4444", "border": "#4338CA",
+                    "badge_bg": "#7C3AED", "badge_fg": "#F8FAFC"
+                }
+            },
+            "cobalt": {
+                "label": "💾  Mode Cobalt (Neon)", "preview": "#2563EB",
+                "colors": {
+                    "bg_main": "#0B1220", "bg_panel": "#16213E", "bg_input": "#1E2A5B",
+                    "bg_header": "#0B1220", "fg_text": "#E2E8F0", "fg_head": "#F8FAFC",
+                    "accent": "#2563EB", "success": "#34D399", "warning": "#FACC15",
+                    "danger": "#EF4444", "border": "#1D4ED8",
+                    "badge_bg": "#2563EB", "badge_fg": "#0B1220"
+                }
+            },
+            "cyber": {
+                "label": "💾  Mode Cyber (Neon)", "preview": "#22D3EE",
+                "colors": {
+                    "bg_main": "#020617", "bg_panel": "#0F172A", "bg_input": "#0E7490",
+                    "bg_header": "#020617", "fg_text": "#E0F2FE", "fg_head": "#F8FAFC",
+                    "accent": "#22D3EE", "success": "#34D399", "warning": "#FACC15",
+                    "danger": "#EF4444", "border": "#0284C7",
+                    "badge_bg": "#22D3EE", "badge_fg": "#020617"
+                }
+            },
+            "midnight_gold": {
+                "label": "👑  Midnight Gold (Luxury)", "preview": "#D4AF37",
+                "colors": {
+                    "bg_main": "#000000", "bg_panel": "#171717", "bg_input": "#262626",
+                    "bg_header": "#000000", "fg_text": "#E5E5E5", "fg_head": "#FFFFFF",
+                    "accent": "#D4AF37", "success": "#10B981", "warning": "#F59E0B",
+                    "danger": "#EF4444", "border": "#404040",
+                    "badge_bg": "#D4AF37", "badge_fg": "#000000"
+                }
             }
         }
-        # --- THÈMES PERSONNALISÉS & COULEURS DYNAMIQUES ---
-        self.themes["nature"] = {
-            "bg_main": "#064E3B", "bg_panel": "#065F46", "bg_input": "#047857",
-            "bg_header": "#064E3B", "fg_text": "#D1FAE5", "fg_head": "#ECFDF5",
-            "accent": "#10B981", "success": "#34D399", "warning": "#FCD34D",
-            "danger": "#F87171", "border": "#059669",
-            "badge_bg": "#10B981", "badge_fg": "#064E3B"
-        }
-        self.themes["amethyst"] = {
-            "bg_main": "#2E1065", "bg_panel": "#4C1D95", "bg_input": "#5B21B6",
-            "bg_header": "#2E1065", "fg_text": "#E9D5FF", "fg_head": "#F5F3FF",
-            "accent": "#A78BFA", "success": "#34D399", "warning": "#FBBF24",
-            "danger": "#F87171", "border": "#7C3AED",
-            "badge_bg": "#C084FC", "badge_fg": "#2E1065"
-        }
-        self.themes["sunset"] = {
-            "bg_main": "#450A0A", "bg_panel": "#7C2D12", "bg_input": "#9A3412",
-            "bg_header": "#450A0A", "fg_text": "#FFEDD5", "fg_head": "#FFF7ED",
-            "accent": "#FB923C", "success": "#4ADE80", "warning": "#FBBF24",
-            "danger": "#F87171", "border": "#C2410C",
-            "badge_bg": "#FB923C", "badge_fg": "#450A0A"
-        }
-        self.themes["midnight_gold"] = {
-            "bg_main": "#000000", "bg_panel": "#171717", "bg_input": "#262626",
-            "bg_header": "#000000", "fg_text": "#E5E5E5", "fg_head": "#FFFFFF",
-            "accent": "#D4AF37", "success": "#10B981", "warning": "#F59E0B",
-            "danger": "#EF4444", "border": "#404040",
-            "badge_bg": "#D4AF37", "badge_fg": "#000000"
-        }
+        self.themes = {key: data["colors"] for key, data in self.theme_data.items()}
+        self.theme_options = [(data["label"], key, data["preview"]) for key, data in self.theme_data.items()]
 
-        self.current_theme = "dark"
+        # Définir le thème courant depuis la préférence utilisateur si fournie
+        self.current_theme = user_theme if user_theme in self.themes else "dark"
         self.colors = self.themes[self.current_theme]
         self.root.config(bg=self.colors["bg_main"])
         
@@ -427,6 +400,7 @@ class GestionEtudiantsApp:
         self.etudiants = []
         self.etudiants_filtres = []
         self.paiements = []
+        self.editing_username = None
         self.editing_matricule = None
         self.current_photo_path = None
         self.tree = None
@@ -648,12 +622,20 @@ class GestionEtudiantsApp:
         search_frame.config(highlightthickness=1, highlightbackground=self.colors["border"])
         search_frame.pack(side=tk.RIGHT, padx=(10, 0))
         
-        tk.Label(search_frame, text="🔍", bg=self.colors["bg_input"], fg=self.colors["accent"], font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=8, pady=8)
+        # Rendre l'icône loupe cliquable
+        search_icon = tk.Label(search_frame, text="🔍", bg=self.colors["bg_input"], 
+                              fg=self.colors["accent"], font=("Segoe UI", 11), cursor="hand2")
+        search_icon.pack(side=tk.LEFT, padx=8, pady=8)
+        search_icon.bind("<Button-1>", lambda e: self.filtrer_etudiants())
         
         self.search_var = tk.StringVar()
         search_entry = tk.Entry(search_frame, textvariable=self.search_var, 
                                font=("Segoe UI", 10), bg=self.colors["bg_input"], fg=self.colors["fg_text"], width=25, relief=tk.FLAT, insertbackground=self.colors["accent"], bd=0)
         search_entry.pack(side=tk.LEFT, padx=(0, 12), pady=8)
+        
+        # Support de la touche Entrée
+        search_entry.bind("<Return>", lambda e: self.filtrer_etudiants())
+
         search_placeholder = "Rechercher..."
         search_entry.insert(0, search_placeholder)
         def on_focus_in(event):
@@ -667,9 +649,6 @@ class GestionEtudiantsApp:
         search_entry.bind("<FocusIn>", on_focus_in)
         search_entry.bind("<FocusOut>", on_focus_out)
         
-        # On n'active la trace qu'APPRÈS avoir inséré le placeholder pour éviter un filtrage vide immédiat
-        self.search_var.trace('w', self.filtrer_etudiants)
-
         # PanedWindow avec meilleur style
         self.paned = ttk.PanedWindow(parent, orient=tk.HORIZONTAL)
         self.paned.pack(fill=tk.BOTH, expand=True)
@@ -783,6 +762,9 @@ class GestionEtudiantsApp:
         
         self.tree.pack(fill=tk.BOTH, expand=True)
         
+        # On active la recherche UNIQUEMENT une fois que le tableau (self.tree) est prêt
+        self.search_var.trace_add('write', self.filtrer_etudiants)
+
         # Menu contextuel (Clic Droit)
         self.context_menu = tk.Menu(self.root, tearoff=0)
         self.context_menu.add_command(label="📧 Envoyer Email", command=self.envoyer_email)
@@ -876,7 +858,7 @@ class GestionEtudiantsApp:
         
         self.create_stat_card(cards_frame, "Total", str(total), "👥").pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         self.create_stat_card(cards_frame, "Actifs", str(actifs), "🟢").pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
-        self.create_stat_card(cards_frame, "Suspendus", str(suspendus), "🔴").pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        self.create_stat_card(cards_frame, "Suspendus", str(suspendus), "🔴", on_click=self.show_suspendus).pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         self.create_stat_card(cards_frame, "Moyenne", f"{moy_gen:.1f}", "📊").pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10, 0))
 
         # --- 2. GRAPHIQUES (Pie & Bar) ---
@@ -944,6 +926,8 @@ class GestionEtudiantsApp:
 
     def render_pie_chart(self, parent, moyennes):
         """Génère le graphique de répartition"""
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         mentions = {"Exc": 0, "TB": 0, "B": 0, "AB": 0, "P": 0, "I": 0}
         for m in moyennes:
             if m >= 18: mentions["Exc"] += 1
@@ -987,6 +971,8 @@ class GestionEtudiantsApp:
 
     def render_bar_chart(self, parent):
         """Génère le graphique du Top 5 des étudiants"""
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         top_students = sorted(self.etudiants, key=lambda x: sum(x.get("note", []))/len(x.get("note", [])) if x.get("note") else 0, reverse=True)[:5]
 
         if top_students:
@@ -1023,7 +1009,7 @@ class GestionEtudiantsApp:
             tk.Label(parent, text="Données insuffisantes", bg=self.colors["bg_panel"], 
                      fg=self.colors["fg_text"]).pack(expand=True)
 
-    def create_stat_card(self, parent, title, value, icon):
+    def create_stat_card(self, parent, title, value, icon, on_click=None):
         """Créer une carte de statistique avec effet de survol Premium"""
         frame = tk.Frame(parent, bg=self.colors["bg_panel"], relief=tk.FLAT, bd=0)
         frame.config(highlightthickness=1, highlightbackground=self.colors["border"])
@@ -1055,6 +1041,18 @@ class GestionEtudiantsApp:
             for widget in inner.winfo_children():
                 widget.config(bg=self.colors["bg_panel"])
                 
+        def bind_click(widget):
+            widget.bind("<Button-1>", lambda e: on_click())
+
+        if on_click:
+            frame.config(cursor="hand2")
+            bind_click(frame)
+            bind_click(inner)
+            bind_click(icon_label)
+            bind_click(content)
+            for child in content.winfo_children():
+                bind_click(child)
+
         inner.bind("<Enter>", on_enter)
         inner.bind("<Leave>", on_leave)
 
@@ -1066,9 +1064,9 @@ class GestionEtudiantsApp:
         prefix = f"{year}-"
         max_seq = 0
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT matricule FROM etudiants WHERE matricule LIKE ?", (f"{prefix}%",))
+                cursor.execute(f"SELECT matricule FROM etudiants WHERE matricule LIKE {DB_P}", (f"{prefix}%",))
                 for row in cursor.fetchall():
                     try:
                         parts = str(row[0]).split('-')
@@ -1452,9 +1450,9 @@ class GestionEtudiantsApp:
                 return
             
             # Vérification de l'unicité du matricule directement dans la base de données
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT matricule FROM etudiants WHERE matricule = ?", (matricule,))
+                cursor.execute(f"SELECT matricule FROM etudiants WHERE matricule = {DB_P}", (matricule,))
                 if cursor.fetchone():
                     self.notify(f"Le matricule '{matricule}' est déjà utilisé.", "error")
                     return
@@ -1482,14 +1480,13 @@ class GestionEtudiantsApp:
                 shutil.copy(self.current_photo_path, photo_dest)
 
             # Sauvegarde en Base de Données
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(f"""
                     INSERT INTO etudiants (matricule, nom, prenom, age, note, photo, date_ajout, email, telephone, statut, filiere, niveau)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", 
+                    VALUES ({DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P},{DB_P})""", 
                     (matricule, nom, prenom, age, json.dumps(notes), 
                      photo_dest, datetime.now().strftime("%d/%m/%Y %H:%M"), email, telephone, self.statut_var.get(), filiere, niveau))
-                conn.commit()
 
             etudiant = {
                 "matricule": matricule,
@@ -1570,13 +1567,12 @@ class GestionEtudiantsApp:
                 shutil.copy(self.current_photo_path, photo_dest)
 
             # Mise à jour Base de Données
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE etudiants SET nom=?, prenom=?, age=?, note=?, photo=?, email=?, telephone=?, statut=?, filiere=?, niveau=?
-                    WHERE matricule=?
+                cursor.execute(f"""
+                    UPDATE etudiants SET nom={DB_P}, prenom={DB_P}, age={DB_P}, note={DB_P}, photo={DB_P}, email={DB_P}, telephone={DB_P}, statut={DB_P}, filiere={DB_P}, niveau={DB_P}
+                    WHERE matricule={DB_P}
                 """, (nom, prenom, age, json.dumps(notes), photo_dest, email, telephone, statut, filiere, niveau, etudiant['matricule']))
-                conn.commit()
 
             # Mise à jour
             etudiant.update({"nom": nom, "prenom": prenom, "age": age, "note": notes, "photo": photo_dest, "email": email, "telephone": telephone, "statut": statut, "filiere": filiere, "niveau": niveau})
@@ -1653,10 +1649,9 @@ class GestionEtudiantsApp:
             matricule = item['values'][0]
            
             # Suppression Base de Données
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM etudiants WHERE matricule=?", (matricule,))
-                conn.commit()
+                cursor.execute(f"DELETE FROM etudiants WHERE matricule={DB_P}", (matricule,))
 
             self.etudiants = [e for e in self.etudiants if e["matricule"] != matricule]
                 
@@ -1695,27 +1690,34 @@ class GestionEtudiantsApp:
     def filtrer_etudiants(self, *args):
         """Filtrer les étudiants en temps réel"""
         # Protection : Si le tableau n'est pas encore créé ou est détruit, on arrête
-        if not self.tree or not self.tree.winfo_exists():
+        if not hasattr(self, 'tree') or not self.tree or not self.tree.winfo_exists():
             return
             
-        search_term = self.search_var.get().lower().strip()
-        # Éviter que le placeholder "Rechercher..." soit traité comme un filtre
-        if search_term == "rechercher...":
-            search_term = ""
+        try:
+            raw_value = self.search_var.get()
+            # On ignore le filtrage si le champ contient encore le texte par défaut
+            if raw_value == "Rechercher...":
+                search_term = ""
+            else:
+                search_term = raw_value.lower().strip()
 
-        if not search_term:
+            if not search_term:
+                self.etudiants_filtres = self.etudiants.copy()
+            else:
+                # Recherche multicritère simplifiée et sécurisée
+                champs = ["nom", "prenom", "matricule", "filiere", "niveau", "telephone", "email", "statut"]
+                self.etudiants_filtres = [
+                    e for e in self.etudiants 
+                    if any(search_term in str(e.get(c) or "").lower() for c in champs)
+                ]
+            
+            self.rafraichir()
+            self.update_status()
+        except Exception as e:
+            print(f"Erreur lors de la recherche: {e}")
+            # En cas d'erreur, on remet la liste complète pour ne pas bloquer l'utilisateur
             self.etudiants_filtres = self.etudiants.copy()
-        else:
-            self.etudiants_filtres = [e for e in self.etudiants if 
-                                     search_term in e["nom"].lower() or 
-                                     search_term in e["prenom"].lower() or 
-                                     search_term in str(e["matricule"]) or
-                                     search_term in e.get("filiere", "").lower() or
-                                     search_term in e.get("niveau", "").lower() or
-                                     search_term in e.get("telephone", "").lower()]
-        
-        self.rafraichir()
-        self.update_status()
+            self.rafraichir()
     
     def trier_colonne(self, col, reverse):
         """Trier le Treeview par colonne"""
@@ -1737,6 +1739,18 @@ class GestionEtudiantsApp:
         if item:
             self.tree.selection_set(item)
             self.context_menu.post(event.x_root, event.y_root)
+
+    def show_suspendus(self):
+        """Afficher la liste des étudiants suspendus dans la vue Gestion"""
+        self.show_page("gestion")
+        if hasattr(self, 'search_var'):
+            self.search_var.set("Suspendu")
+        else:
+            self.etudiants_filtres = [
+                e for e in self.etudiants if str(e.get("statut", "")).lower() == "suspendu"
+            ]
+            self.rafraichir()
+            self.update_status()
 
     def rafraichir(self):
         """Rafraîchir la liste des étudiants"""
@@ -1860,7 +1874,10 @@ class GestionEtudiantsApp:
         self.new_role_menu = ttk.Combobox(form_frame, textvariable=self.new_role_var, values=["Admin", "Secrétaire", "Professeur"], state="readonly")
         self.new_role_menu.pack(fill=tk.X, pady=(5, 25), ipady=4)
 
-        self.create_styled_button(form_frame, "➕ Créer le compte", self.ajouter_utilisateur, self.colors["success"]).pack(fill=tk.X)
+        self.btn_user_action = self.create_styled_button(form_frame, "➕ Créer le compte", self.ajouter_utilisateur, self.colors["success"])
+        self.btn_user_action.pack(fill=tk.X, pady=(0, 5))
+        
+        self.create_styled_button(form_frame, "🔄 Réinitialiser", self.reinitialiser_form_utilisateur, "#95a5a6").pack(fill=tk.X)
 
         # Liste des comptes (Droite)
         right_frame = tk.Frame(paned, bg=self.colors["bg_panel"], relief=tk.RAISED, bd=1)
@@ -1878,7 +1895,10 @@ class GestionEtudiantsApp:
         self.users_tree.heading("Role", text="Rôle")
         self.users_tree.pack(fill=tk.BOTH, expand=True)
 
-        self.create_styled_button(right_frame, "🗑️ Supprimer le compte", self.supprimer_utilisateur, self.colors["danger"]).pack(pady=20)
+        btn_manage = tk.Frame(right_frame, bg=self.colors["bg_panel"])
+        btn_manage.pack(pady=20)
+        self.create_styled_button(btn_manage, "✏️ Modifier le compte", self.preparer_modif_utilisateur, self.colors["warning"]).pack(side=tk.LEFT, padx=5)
+        self.create_styled_button(btn_manage, "🗑️ Supprimer le compte", self.supprimer_utilisateur, self.colors["danger"]).pack(side=tk.LEFT, padx=5)
 
         self.charger_utilisateurs()
 
@@ -1886,28 +1906,70 @@ class GestionEtudiantsApp:
         for i in self.users_tree.get_children():
             self.users_tree.delete(i)
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT username, role FROM users")
                 for row in cursor.fetchall():
                     self.users_tree.insert("", tk.END, values=row)
         except Exception as e: self.notify(f"Erreur de chargement utilisateurs: {e}", "error")
 
+    def reinitialiser_form_utilisateur(self):
+        self.editing_username = None
+        self.new_user_entry.delete(0, tk.END)
+        self.new_pass_entry.delete(0, tk.END)
+        self.new_role_var.set("Professeur")
+        if hasattr(self, 'btn_user_action'):
+            self.btn_user_action.config(text="➕ Créer le compte", bg=self.colors["success"])
+
+    def preparer_modif_utilisateur(self):
+        sel = self.users_tree.selection()
+        if not sel: 
+            self.notify("Sélectionnez un utilisateur à modifier", "warning")
+            return
+        u, r = self.users_tree.item(sel[0])['values']
+        self.editing_username = u
+        self.new_user_entry.delete(0, tk.END)
+        self.new_user_entry.insert(0, u)
+        self.new_pass_entry.delete(0, tk.END)
+        self.new_role_var.set(r)
+        if hasattr(self, 'btn_user_action'):
+            self.btn_user_action.config(text="💾 Enregistrer les modifications", bg=self.colors["warning"])
+
     def ajouter_utilisateur(self):
         u, p, r = self.new_user_entry.get().strip(), self.new_pass_entry.get().strip(), self.new_role_var.get()
-        if not u or not p:
-            self.notify("Veuillez remplir tous les champs", "error")
+        if not u:
+            self.notify("L'identifiant est obligatoire", "error")
             return
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (u, hash_password(p), r))
-                conn.commit()
-            self.notify(f"Nouveau compte '{u}' créé", "success")
+                if self.editing_username:
+                    # Modification d'un compte existant
+                    if p: # Si un nouveau mot de passe est saisi
+                        query = f"UPDATE users SET username={DB_P}, password_hash={DB_P}, role={DB_P} WHERE username={DB_P}"
+                        cursor.execute(query, (u, hash_password(p), r, self.editing_username))
+                    else: # Conserver l'ancien mot de passe
+                        query = f"UPDATE users SET username={DB_P}, role={DB_P} WHERE username={DB_P}"
+                        cursor.execute(query, (u, r, self.editing_username))
+                    
+                    # Mettre à jour l'identité de la session si l'admin se modifie lui-même
+                    if self.editing_username == self.username:
+                        self.username = u
+                        
+                    self.notify(f"Compte '{u}' mis à jour", "success")
+                else:
+                    # Création d'un nouveau compte
+                    if not p:
+                        self.notify("Le mot de passe est obligatoire pour un nouveau compte", "error")
+                        return
+                    query = f"INSERT INTO users (username, password_hash, role) VALUES ({DB_P}, {DB_P}, {DB_P})"
+                    cursor.execute(query, (u, hash_password(p), r))
+                    self.notify(f"Nouveau compte '{u}' créé", "success")
+            
+            self.reinitialiser_form_utilisateur()
             self.charger_utilisateurs()
-            self.new_user_entry.delete(0, tk.END); self.new_pass_entry.delete(0, tk.END)
-        except sqlite3.IntegrityError:
-            self.notify("Ce nom d'utilisateur est déjà pris", "error")
+        except Exception as e:
+            self.notify(f"Erreur (Identifiant peut-être déjà pris): {e}", "error")
 
     def supprimer_utilisateur(self):
         sel = self.users_tree.selection()
@@ -1917,8 +1979,10 @@ class GestionEtudiantsApp:
             self.notify("Vous ne pouvez pas supprimer votre propre compte", "error")
             return
         if messagebox.askyesno("Confirmation", f"Supprimer définitivement le compte de {u} ?"):
-            with sqlite3.connect(DB_PATH) as conn:
-                conn.execute("DELETE FROM users WHERE username = ?", (u,))
+            with db_session() as conn:
+                query = f"DELETE FROM users WHERE username = {DB_P}"
+                cursor = conn.cursor()
+                cursor.execute(query, (u,))
             self.charger_utilisateurs()
             self.notify("Compte utilisateur supprimé", "warning")
 
@@ -1993,7 +2057,7 @@ class GestionEtudiantsApp:
     def charger_historique_paiements_data(self):
         self.paiements = []
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT id, matricule, montant FROM paiements")
                 for row in cursor.fetchall():
@@ -2003,10 +2067,10 @@ class GestionEtudiantsApp:
     def rafraichir_tree_paiements(self):
         for i in self.pay_tree.get_children(): self.pay_tree.delete(i)
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT p.id, p.matricule, e.nom || ' ' || e.prenom, p.montant, p.date_paiement, p.type_paiement 
+                cursor.execute(f"""
+                    SELECT p.id, p.matricule, {NAME_CONCAT}, p.montant, p.date_paiement, p.type_paiement 
                     FROM paiements p JOIN etudiants e ON p.matricule = e.matricule
                     ORDER BY p.id DESC
                 """)
@@ -2025,8 +2089,8 @@ class GestionEtudiantsApp:
             montant = float(montant_str)
             date_p = datetime.now().strftime("%d/%m/%Y %H:%M")
             mode = self.pay_type.get()
-            with sqlite3.connect(DB_PATH) as conn:
-                conn.execute("INSERT INTO paiements (matricule, montant, date_paiement, type_paiement) VALUES (?,?,?,?)",
+            with db_session() as conn:
+                conn.execute(f"INSERT INTO paiements (matricule, montant, date_paiement, type_paiement) VALUES ({DB_P},{DB_P},{DB_P},{DB_P})",
                             (matricule, montant, date_p, mode))
             self.notify(f"Paiement de {montant} F enregistré", "success")
             self.pay_amount.delete(0, tk.END)
@@ -2047,9 +2111,9 @@ class GestionEtudiantsApp:
         etudiant = next((e for e in self.etudiants if str(e['matricule']) == str(matricule)), None)
         frais_totaux = float(etudiant.get('frais_scolarite', 500000)) if etudiant else 500000.0
         
-        with sqlite3.connect(DB_PATH) as conn:
+        with db_session() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT SUM(montant) FROM paiements WHERE matricule = ?", (str(matricule),))
+            cursor.execute(f"SELECT SUM(montant) FROM paiements WHERE matricule = {DB_P}", (str(matricule),))
             res_sum = cursor.fetchone()[0]
             deja_paye = float(res_sum) if res_sum is not None else 0.0
             reste = frais_totaux - deja_paye
@@ -2064,7 +2128,7 @@ class GestionEtudiantsApp:
             doc = SimpleDocTemplate(file_path, pagesize=A4)
             elements = []
             styles = getSampleStyleSheet()
-            elements.append(Paragraph(f"<b>ESGIS MANAGER PRO - REÇU DE PAIEMENT</b>", styles['Title']))
+            elements.append(Paragraph(f"<b>STUDENT MANAGER PRO - REÇU DE PAIEMENT</b>", styles['Title']))
             elements.append(Paragraph(f"Reçu N° : {id_pay} | Date : {date_p}", styles['Normal']))
             elements.append(Spacer(1, 20))
             data = [
@@ -2121,7 +2185,7 @@ class GestionEtudiantsApp:
             
             # Titre stylisé
             title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], alignment=1, spaceAfter=20)
-            elements.append(Paragraph(f"Liste des Étudiants - ESGIS Manager PRO", title_style))
+            elements.append(Paragraph(f"Liste des Étudiants - Student Manager PRO", title_style))
             elements.append(Paragraph(f"Date de génération : {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
             elements.append(Spacer(1, 12))
             
@@ -2298,30 +2362,71 @@ class GestionEtudiantsApp:
         """Ouvre une fenêtre pour choisir manuellement le thème de l'interface"""
         theme_win = tk.Toplevel(self.root)
         theme_win.title("⚙️ Paramètres d'apparence")
-        theme_win.geometry("400x620")
-        theme_win.resizable(False, False)
+        theme_win.geometry("640x720")
+        theme_win.resizable(True, True)
         theme_win.config(bg=self.colors["bg_main"])
         theme_win.transient(self.root)
         theme_win.grab_set()
         
         # Centrer la fenêtre par rapport à l'application
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 190
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 240
+        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 320
+        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 260
         theme_win.geometry(f"+{max(0, x)}+{max(0, y)}")
 
         tk.Label(theme_win, text="Personnalisation du thème", font=("Segoe UI", 14, "bold"),
                  bg=self.colors["bg_main"], fg=self.colors["accent"]).pack(pady=(30, 10))
         tk.Label(theme_win, text="Choisissez l'ambiance visuelle de votre gestionnaire", font=("Segoe UI", 9),
-                 bg=self.colors["bg_main"], fg=self.colors["fg_text"]).pack(pady=(0, 30))
+                 bg=self.colors["bg_main"], fg=self.colors["fg_text"]).pack(pady=(0, 10))
+        tk.Label(theme_win, text="Faites défiler vers le bas pour voir tous les thèmes.", font=("Segoe UI", 8),
+                 bg=self.colors["bg_main"], fg=self.colors["fg_text"]).pack(pady=(0, 20))
 
-        theme_options = [
-            ("🌙  Mode Sombre (Slate)", "dark", "#1E293B"),
-            ("☀️  Mode Clair (Snow)", "light", "#0EA5E9"),
-            ("🌿  Mode Nature (Emerald)", "nature", "#065F46"),
-            ("💎  Mode Améthyste (Purple)", "amethyst", "#4C1D95"),
-            ("🌅  Mode Sunset (Warm)", "sunset", "#7C2D12"),
-            ("👑  Midnight Gold (Luxury)", "midnight_gold", "#D4AF37")
-        ]
+        theme_options = self.theme_options
+
+        preview_container = tk.Frame(theme_win, bg=self.colors["bg_panel"], bd=1, relief=tk.SOLID)
+        preview_container.pack(fill=tk.X, padx=30, pady=(0, 20))
+        preview_title = tk.Label(preview_container, text="Aperçu du thème sélectionné", font=("Segoe UI", 10, "bold"),
+                                 bg=self.colors["bg_panel"], fg=self.colors["accent"])
+        preview_title.pack(anchor="w", pady=(10, 0), padx=10)
+        preview_sample = tk.Label(preview_container, text="Manager PRO - Aperçu",
+                                  bg=self.colors["bg_panel"], fg=self.colors["fg_head"],
+                                  font=("Segoe UI", 12, "bold"), pady=12)
+        preview_sample.pack(fill=tk.X, padx=10, pady=(10, 16))
+        # Bouton de vérification des mises à jour toujours visible dans l'aperçu
+        self.update_btn_preview = self.create_styled_button(preview_container, f"🔄 Vérifier les mises à jour ({APP_VERSION})", lambda: self.verifier_mises_a_jour(automatique=False), self.colors["accent"])
+        self.update_btn_preview.pack(fill=tk.X, padx=10, pady=(0, 12))
+
+        options_canvas = tk.Canvas(theme_win, bg=self.colors["bg_main"], highlightthickness=0, borderwidth=0, height=420)
+        v_scrollbar = tk.Scrollbar(theme_win, orient=tk.VERTICAL, command=options_canvas.yview)
+        h_scrollbar = tk.Scrollbar(theme_win, orient=tk.HORIZONTAL, command=options_canvas.xview)
+        options_canvas.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+
+        options_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(30, 0), pady=(0, 0))
+        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 10), pady=(0, 10))
+        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X, padx=(30, 10), pady=(0, 10))
+
+        options_inner = tk.Frame(options_canvas, bg=self.colors["bg_main"])
+        window_id = options_canvas.create_window((0, 0), window=options_inner, anchor="nw")
+
+        def _update_scroll_region(event=None):
+            options_canvas.configure(scrollregion=options_canvas.bbox("all"))
+            try:
+                # Adapter la largeur du contenu à la largeur du canevas pour activer le scroll horizontal
+                options_canvas.itemconfig(window_id, width=options_canvas.winfo_width())
+            except Exception:
+                pass
+
+        options_inner.bind("<Configure>", _update_scroll_region)
+
+        def _on_mousewheel(event):
+            options_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        options_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        # Support du défilement horizontal via Shift + molette
+        def _on_shift_mousewheel(event):
+            if event.state & 0x0001:  # Shift appuyé
+                options_canvas.xview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        options_canvas.bind_all("<Shift-MouseWheel>", _on_shift_mousewheel)
 
         def appliquer_et_fermer(key):
             self.current_theme = key
@@ -2333,19 +2438,51 @@ class GestionEtudiantsApp:
                 if not isinstance(widget, tk.Toplevel):
                     widget.destroy()
             self.create_widgets()
+            # Enregistrer la préférence de thème pour l'utilisateur courant
+            try:
+                with db_session() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(f"UPDATE users SET theme = {DB_P} WHERE username = {DB_P}", (self.current_theme, self.username))
+            except Exception:
+                pass
             self.notify(f"Thème {key.capitalize()} appliqué !", "info")
 
+        def preview_theme(key):
+            preview_colors = self.themes.get(key, self.colors)
+            preview_container.config(bg=preview_colors["bg_main"])
+            preview_title.config(bg=preview_colors["bg_main"], fg=preview_colors["accent"])
+            preview_sample.config(bg=preview_colors["bg_panel"], fg=preview_colors["fg_head"],
+                                  text=f"Manager PRO - Aperçu ({key.replace('_', ' ').title()})")
+            self.update_btn_preview.config(bg=preview_colors["accent"])
+
         for label, key, btn_color in theme_options:
-            # Bouton de sélection
-            btn = self.create_styled_button(theme_win, label, lambda k=key: appliquer_et_fermer(k), btn_color)
-            btn.pack(fill=tk.X, padx=50, pady=8)
+            option_frame = tk.Frame(options_inner, bg=self.colors["bg_main"])
+            option_frame.pack(fill=tk.X, padx=0, pady=8)
+
+            # Aperçu visuel du thème
+            preview_frame = tk.Frame(option_frame, bg=self.colors["bg_main"])
+            preview_frame.pack(side=tk.LEFT, padx=(0, 12))
+            if key in self.themes:
+                preview_colors = self.themes[key]
+                for color_key in ("bg_main", "bg_panel", "accent"):
+                    swatch = tk.Frame(preview_frame, bg=preview_colors[color_key], width=28, height=28, bd=1, relief=tk.SOLID)
+                    swatch.pack(side=tk.LEFT, padx=2)
+                    swatch.pack_propagate(False)
+                    swatch.bind("<Button-1>", lambda e, k=key: preview_theme(k))
+
+                sample_label = tk.Label(option_frame, text="AaBb123 – Aperçu", 
+                                        bg=preview_colors["bg_panel"], fg=preview_colors["fg_head"], 
+                                        font=("Segoe UI", 8, "bold"), padx=8, pady=6, bd=1, relief=tk.SOLID,
+                                        cursor="hand2")
+                sample_label.pack(side=tk.LEFT, padx=(0, 12))
+                sample_label.bind("<Button-1>", lambda e, k=key: preview_theme(k))
+
+            btn = self.create_styled_button(option_frame, label, lambda k=key: appliquer_et_fermer(k), btn_color)
+            btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
             if self.current_theme == key:
-                tk.Label(theme_win, text="✓ Actuellement sélectionné", font=("Segoe UI", 8, "italic"), 
-                         bg=self.colors["bg_main"], fg=self.colors["success"]).pack()
-        
-        # Ajouter le bouton de mise à jour manuelle
-        tk.Frame(theme_win, bg=self.colors["border"], height=1).pack(fill=tk.X, padx=50, pady=20)
-        self.create_styled_button(theme_win, "🔄 Vérifier les mises à jour", lambda: self.verifier_mises_a_jour(automatique=False), self.colors["accent"]).pack(fill=tk.X, padx=50)
+                tk.Label(option_frame, text="✓ Actuellement sélectionné", font=("Segoe UI", 8, "italic"), 
+                         bg=self.colors["bg_main"], fg=self.colors["success"]).pack(side=tk.LEFT, padx=10)
 
     def verifier_mises_a_jour(self, automatique=True):
         """Vérifie si une nouvelle version est disponible sur le serveur"""
@@ -2422,9 +2559,9 @@ class GestionEtudiantsApp:
                 widget.destroy()
             
             # Fonction de rappel pour recréer l'interface après reconnexion
-            def relancer(user, role):
+            def relancer(user, role, theme='dark'):
                 self.root.deiconify()
-                GestionEtudiantsApp(self.root, user, role)
+                GestionEtudiantsApp(self.root, user, role, theme)
             
             LoginWindow(self.root, relancer)
 
@@ -2437,10 +2574,10 @@ class GestionEtudiantsApp:
             self.notify(f"Impossible d'initialiser la base de données: {e}", "error")
 
     def charger_donnees(self):
-        """Charger les données depuis la base de données SQLite"""
+        """Charger les données depuis la base de données SQLite ou MySQL distante"""
         self.etudiants = []
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with db_session() as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT * FROM etudiants")
                 rows = cursor.fetchall()
@@ -2473,17 +2610,18 @@ class GestionEtudiantsApp:
             self.notify(f"Erreur lors du chargement des données: {e}", "error")
     
     def migrer_json_vers_sqlite(self, cursor, conn):
-        """Importer les données JSON existantes dans SQLite"""
+        """Importer les données JSON existantes dans la base de données active"""
         try:
             with open(JSON_PATH, "r", encoding="utf-8") as fichier:
                 data = json.load(fichier)
+                insert_cmd = "REPLACE INTO etudiants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)" if DB_TYPE == "mysql" else "INSERT OR IGNORE INTO etudiants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
                 for e in data:
-                    cursor.execute("INSERT OR IGNORE INTO etudiants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+                    cursor.execute(insert_cmd, 
                         (e['matricule'], e['nom'], e['prenom'], e['age'], 
                          json.dumps(e.get('note', [])), e.get('photo', ''), e.get('date_ajout', ''), e.get('email', ''), e.get('telephone', ''), e.get('statut', 'Actif'), e.get('filiere', ''), e.get('niveau', ''), e.get('frais_scolarite', 500000)))
                 conn.commit()
-                messagebox.showinfo("Migration", "Vos anciennes données JSON ont été importées dans la base de données SQLite.")
-                self.notify("Vos anciennes données JSON ont été importées dans la base de données SQLite.", "info")
+                messagebox.showinfo("Migration", "Vos anciennes données JSON ont été importées dans la base de données.")
+                self.notify("Vos anciennes données JSON ont été importées dans la base de données.", "info")
         except Exception as e:
             print(f"Erreur migration: {e}")
             self.notify(f"Erreur migration: {e}", "error")
@@ -2506,6 +2644,45 @@ class GestionEtudiantsApp:
         except Exception:
             pass
 
+def compiler_en_exe():
+    """Compile automatiquement le script en utilisant PyInstaller avec des chemins absolus."""
+    print(f"\n📦 Préparation de la compilation de {APP_NAME} ({APP_VERSION})...")
+    
+    script_path = os.path.abspath(__file__)
+    current_dir = os.path.dirname(script_path)
+    icon_path = os.path.join(current_dir, "app_icon.ico")
+    logo_path = os.path.join(current_dir, "logo.png")
+
+    cmd = [
+        sys.executable, "-m", "PyInstaller",
+        "--noconsole",
+        "--onefile",
+        "--clean",
+        f"--name={APP_NAME.replace(' ', '_')}"
+    ]
+    
+    # Ajout sécurisé des ressources
+    if os.path.exists(logo_path):
+        cmd.append(f"--add-data={logo_path};.")
+    
+    if os.path.exists(icon_path):
+        cmd.append(f"--add-data={icon_path};.")
+        cmd.append(f"--icon={icon_path}")
+    else:
+        print(f"⚠️  Attention: '{icon_path}' est introuvable. Compilation avec l'icône par défaut.")
+
+    cmd.append(script_path)
+    
+    print(f"🚀 Exécution de la commande : {' '.join(cmd)}")
+    try:
+        import subprocess
+        subprocess.run(cmd, check=True)
+        print("\n✅ Compilation réussie !")
+        print("📁 Retrouvez votre fichier '.exe' dans le dossier 'dist/'.")
+    except Exception as e:
+        print(f"\n❌ Erreur pendant la compilation: {e}")
+        print("Assurez-vous que PyInstaller est installé : pip install pyinstaller")
+
 
 if __name__ == "__main__":
     # Activer le support Haute Définition (High DPI) pour éviter le flou sur Windows
@@ -2515,14 +2692,19 @@ if __name__ == "__main__":
     except Exception:
         pass
 
+    # Mode compilation automatique via l'argument --compile
+    if "--compile" in sys.argv:
+        compiler_en_exe()
+        sys.exit()
+
     setup_database() # Initialiser la DB avant le login
 
     root = tk.Tk()
     root.withdraw() # Cacher la fenêtre principale au démarrage
     
-    def lancer_application(user, role):
+    def lancer_application(user, role, theme='dark'):
         root.deiconify() # Réafficher la fenêtre principale
-        GestionEtudiantsApp(root, user, role)
+        GestionEtudiantsApp(root, user, role, theme)
     
     # Séquence de démarrage PRO : Splash Screen -> Login -> App
     def start_login():

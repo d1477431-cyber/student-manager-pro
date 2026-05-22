@@ -1,0 +1,6 @@
+Pillow
+mysql-connector-python
+opencv-python
+matplotlib
+reportlab
+pyinstaller

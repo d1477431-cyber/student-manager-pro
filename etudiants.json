@@ -1,1 +1,39 @@
-[]
+[
+    {
+        "matricule": 112,
+        "nom": "Ee",
+        "prenom": "Gg",
+        "age": 18,
+        "note": [
+            14.0,
+            11.0,
+            12.0
+        ],
+        "photo": "",
+        "date_ajout": "09/05/2026 19:22",
+        "email": "",
+        "telephone": "",
+        "statut": "Suspendu",
+        "filiere": "DA",
+        "niveau": "L2",
+        "frais_scolarite": 500000.0
+    },
+    {
+        "matricule": "20653",
+        "nom": "Sogo",
+        "prenom": "Sogo",
+        "email": "",
+        "telephone": "",
+        "age": 20,
+        "note": [
+            20.0,
+            12.0,
+            17.0
+        ],
+        "filiere": "EPS",
+        "niveau": "L2",
+        "statut": "Actif",
+        "photo": "photos\\20653.jpg",
+        "date_ajout": "21/05/2026 21:03"
+    }
+]

@@ -5,8 +5,8 @@ a = Analysis(
     ['gestionnaire.py'],
     pathex=[],
     binaries=[],
-    datas=[('app_icon.ico', '.'), ('logo.png', '.'), ('etudiants.json', '.')],
-    hiddenimports=['mysql.connector', 'cv2', 'PIL', 'matplotlib', 'reportlab'],
+    datas=[('app_icon.ico', '.'), ('logo.png', '.')],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app_icon.ico',
 )
