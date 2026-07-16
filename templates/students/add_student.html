@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Ajouter un étudiant</h1>
+    <div class="page-subtitle">Renseignez les informations du nouveau profil</div>
+  </div>
+</div>
+
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-grid">
+      <div class="form-group">
+        <label for="matricule">Matricule</label>
+        <input type="text" id="matricule" name="matricule" required>
+      </div>
+      <div class="form-group">
+        <label for="nom">Nom</label>
+        <input type="text" id="nom" name="nom" required>
+      </div>
+      <div class="form-group">
+        <label for="prenom">Prénom</label>
+        <input type="text" id="prenom" name="prenom" required>
+      </div>
+      <div class="form-group">
+        <label for="age">Âge</label>
+        <input type="number" id="age" name="age" min="0">
+      </div>
+      <div class="form-group">
+        <label for="filiere">Filière</label>
+        <input type="text" id="filiere" name="filiere">
+      </div>
+      <div class="form-group">
+        <label for="niveau">Niveau</label>
+        <input type="text" id="niveau" name="niveau">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email">
+      </div>
+      <div class="form-group">
+        <label for="telephone">Téléphone</label>
+        <input type="text" id="telephone" name="telephone">
+      </div>
+      <div class="form-group">
+        <label for="statut">Statut</label>
+        <select id="statut" name="statut">
+          <option value="Actif">Actif</option>
+          <option value="Suspendu">Suspendu</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="frais_scolarite">Frais de scolarité</label>
+        <input type="number" id="frais_scolarite" name="frais_scolarite" value="500000">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="notes">Notes (séparées par des virgules)</label>
+      <textarea id="notes" name="notes"></textarea>
+    </div>
+    <div class="action-row">
+      <button class="button" type="submit">Enregistrer</button>
+      <a class="button button-secondary" href="{% url 'index' %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

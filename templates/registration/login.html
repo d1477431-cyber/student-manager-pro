@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="login-shell">
+  <div class="card hero-panel">
+    <div class="hero-badge">✨ Nouveau design</div>
+    <h1>Gérez vos étudiants avec élégance</h1>
+    <p>Une interface moderne, claire et rapide pour suivre les inscriptions, notes et profils étudiants sans effort.</p>
+  </div>
+
+  <div class="card">
+    <div class="page-header" style="margin-bottom: 12px;">
+      <div>
+        <h2 class="page-title" style="font-size: 1.35rem;">Connexion</h2>
+        <div class="page-subtitle">Accédez à votre espace de gestion</div>
+      </div>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" name="username" required placeholder="Entrez votre identifiant">
+      </div>
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" name="password" required placeholder="Entrez votre mot de passe">
+      </div>
+      <button class="button" type="submit">Se connecter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

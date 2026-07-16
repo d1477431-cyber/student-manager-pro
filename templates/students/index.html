@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Liste des étudiants</h1>
+    <div class="page-subtitle">Vue synthétique de votre base académique</div>
+  </div>
+  <a class="button" href="{% url 'add_student' %}">Ajouter un étudiant</a>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="label">Étudiants</div>
+    <strong>{{ students|length }}</strong>
+  </div>
+  <div class="stat-card">
+    <div class="label">Actifs</div>
+    <strong>{{ students|length }}</strong>
+  </div>
+  <div class="stat-card">
+    <div class="label">À suivre</div>
+    <strong>0</strong>
+  </div>
+</div>
+
+<div class="card">
+  {% if students %}
+    <table>
+      <thead>
+        <tr>
+          <th>Matricule</th>
+          <th>Nom</th>
+          <th>Prénom</th>
+          <th>Filière</th>
+          <th>Niveau</th>
+          <th>Statut</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+          <tr>
+            <td>{{ student.matricule }}</td>
+            <td>{{ student.nom }}</td>
+            <td>{{ student.prenom }}</td>
+            <td>{{ student.filiere|default:'-' }}</td>
+            <td>{{ student.niveau|default:'-' }}</td>
+            <td>{{ student.statut }}</td>
+            <td>{{ student.notes_list|join:', ' }}</td>
+            <td>
+              <div class="action-row" style="justify-content:flex-start;">
+                <a class="button button-secondary" href="{% url 'edit_student' student.matricule %}">Modifier</a>
+                <form method="post" action="{% url 'delete_student' student.matricule %}" style="margin:0;">
+                  {% csrf_token %}
+                  <button class="button button-danger" type="submit">Supprimer</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="margin:0; color:var(--muted);">Aucun étudiant enregistré.</p>
+  {% endif %}
+</div>
+{% endblock %}

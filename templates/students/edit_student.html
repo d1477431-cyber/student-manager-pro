@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Modifier {{ student.nom }} {{ student.prenom }}</h1>
+    <div class="page-subtitle">Mettez à jour les informations de l'étudiant</div>
+  </div>
+</div>
+
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="action-row" style="margin-top: 12px;">
+      <button class="button" type="submit">Enregistrer</button>
+      <a class="button button-secondary" href="{% url 'index' %}">Retour</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
