@@ -105,12 +105,15 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 AUTH_USER_MODEL = 'students.CustomUser'
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
 
-# Ajouter les domaines Railway pour CSRF
+# Ajouter le domaine exact de production pour CSRF
 CSRF_TRUSTED_ORIGINS += ['https://*.railway.app', 'https://*.up.railway.app']
 
 # Ajouter le domaine public Railway si disponible
 if railway_public_domain:
     CSRF_TRUSTED_ORIGINS.append(f'https://{railway_public_domain}')
+
+# Forcer le domaine de production (Railway)
+CSRF_TRUSTED_ORIGINS.append('https://student-manager-pro-production.up.railway.app')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
