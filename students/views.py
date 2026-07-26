@@ -47,6 +47,11 @@ except ImportError:
     REPORTLAB_AVAILABLE = False
 
 
+def health_check(request):
+    """Vue publique pour le health check de Railway"""
+    return HttpResponse("OK", status=200)
+
+
 def _authenticate_fallback(username, password):
     if not username or not password:
         return None
