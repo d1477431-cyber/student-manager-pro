@@ -2993,3 +2993,647 @@ tbody tr:hover {
     color: var(--danger);
     white-space: nowrap;
 }
+
+/* ===== RESPONSIVE AMÉLIORÉ ===== */
+
+/* Tablettes (≤1024px) */
+@media (max-width: 1024px) {
+    .login-shell {
+        grid-template-columns: 1fr;
+        padding: 20px 16px;
+    }
+    .hero-panel {
+        display: none;
+    }
+    .login-card {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .top-students-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .finance-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .fin-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .filters-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .filter-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .page-title {
+        font-size: 1.4rem;
+    }
+    .content-wrapper {
+        padding: 20px 16px 32px;
+    }
+    .card {
+        padding: 18px;
+    }
+    .section-card {
+        padding: 18px;
+    }
+    .modal {
+        padding: 24px;
+        max-width: 90%;
+    }
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    table {
+        font-size: 0.8rem;
+    }
+    thead th, tbody td {
+        padding: 10px 12px;
+    }
+    .topbar-search {
+        width: 180px;
+    }
+    .topbar-search:focus-within {
+        width: 220px;
+    }
+}
+
+/* Petits mobiles (≤480px) */
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .top-students-grid {
+        grid-template-columns: 1fr;
+    }
+    .finance-grid {
+        grid-template-columns: 1fr;
+    }
+    .fin-grid {
+        grid-template-columns: 1fr;
+    }
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .page-title {
+        font-size: 1.2rem;
+    }
+    .action-row {
+        flex-direction: column;
+        width: 100%;
+    }
+    .action-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .content-wrapper {
+        padding: 16px 12px 24px;
+    }
+    .card {
+        padding: 14px;
+        border-radius: var(--radius);
+    }
+    .section-card {
+        padding: 14px;
+        border-radius: var(--radius);
+    }
+    .stat-card {
+        padding: 14px 16px;
+    }
+    .stat-card strong {
+        font-size: 1.2rem;
+    }
+    .topbar {
+        padding: 0 12px;
+        height: 52px;
+    }
+    .topbar-search {
+        width: 100px;
+        height: 32px;
+        padding: 0 8px;
+    }
+    .topbar-search:focus-within {
+        width: 140px;
+    }
+    .search-input {
+        font-size: 0.75rem;
+    }
+    .search-kbd {
+        display: none;
+    }
+    .topbar-action-btn {
+        width: 30px;
+        height: 30px;
+    }
+    .topbar-action-btn svg {
+        width: 15px;
+        height: 15px;
+    }
+    .topbar-btn {
+        width: 32px;
+        height: 32px;
+    }
+    .topbar-btn svg {
+        width: 15px;
+        height: 15px;
+    }
+    .topbar-divider {
+        display: none;
+    }
+    .breadcrumb-current {
+        font-size: 0.8rem;
+    }
+    .main-content {
+        margin-top: 52px;
+    }
+    .login-card {
+        padding: 24px 16px;
+    }
+    .login-card h2 {
+        font-size: 1.2rem;
+    }
+    .form-grid {
+        gap: 14px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.8rem;
+    }
+    .btn-sm {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+    .btn-lg {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    .dashboard-grid {
+        gap: 14px;
+    }
+    .chart-grid {
+        gap: 14px;
+    }
+    .chart-card-header {
+        padding: 12px 14px 8px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    .chart-card-body {
+        padding: 4px 14px 12px;
+    }
+    .chart-card-period {
+        font-size: 0.65rem;
+    }
+    .section-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .students-table-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 14px 16px;
+    }
+    .alertes-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .alerte-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .alerte-solde {
+        align-self: flex-end;
+    }
+    .dashboard-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    .pagination {
+        flex-wrap: wrap;
+        gap: 2px;
+    }
+    .pagination a, .pagination .current, .pagination .disabled {
+        min-width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+    .modal {
+        padding: 20px;
+        width: 95%;
+    }
+    .modal h3 {
+        font-size: 1.1rem;
+    }
+    .toast-container {
+        top: 60px;
+        right: 10px;
+        left: 10px;
+    }
+    .toast {
+        max-width: 100%;
+        font-size: 0.8rem;
+        padding: 10px 14px;
+    }
+    .flash {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+    }
+    .chart-bar {
+        height: 120px;
+        padding: 10px 4px 20px;
+    }
+    .bar span {
+        font-size: 0.55rem;
+        bottom: -18px;
+    }
+    .top-student-card {
+        padding: 16px 14px;
+    }
+    .top-student-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 0.85rem;
+    }
+    .top-student-moyenne {
+        font-size: 1.1rem;
+    }
+    .finance-card {
+        padding: 14px 16px;
+    }
+    .finance-card-value {
+        font-size: 1rem;
+    }
+    .fin-stat {
+        padding: 14px 16px;
+    }
+    .fin-stat strong {
+        font-size: 1rem;
+    }
+    .profile-chip {
+        flex-wrap: wrap;
+    }
+    .moyenne-cell {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    .moyenne-bar {
+        width: 100%;
+        max-width: 60px;
+    }
+    .pill {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+    .pill-status {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+    }
+    .empty-state {
+        padding: 32px 16px;
+    }
+    .sidebar {
+        max-width: 280px;
+    }
+    .sidebar-logo {
+        padding: 16px 4px 18px;
+        min-height: 56px;
+    }
+    .sidebar-link {
+        padding: 7px 10px;
+        font-size: 12.5px;
+        min-height: 36px;
+    }
+    .sidebar-group + .sidebar-group {
+        margin-top: 14px;
+    }
+    .sidebar-profile {
+        padding: 10px 4px 14px;
+    }
+    .sidebar-version {
+        font-size: 9px;
+    }
+    .sidebar-logo-title {
+        font-size: 12px;
+    }
+    .sidebar-logo-subtitle {
+        font-size: 9px;
+    }
+    .sidebar-logo-icon {
+        width: 30px;
+        height: 30px;
+    }
+    .sidebar-logo-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+    .sidebar-profile-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 10px;
+    }
+    .sidebar-profile-name {
+        font-size: 11px;
+    }
+    .sidebar-profile-role {
+        font-size: 9px;
+    }
+    .sidebar-logout-btn {
+        min-width: 28px;
+        min-height: 28px;
+        padding: 4px;
+    }
+    .sidebar-logout-btn svg {
+        width: 14px;
+        height: 14px;
+    }
+    .sidebar-badge {
+        height: 16px;
+        min-width: 16px;
+        font-size: 9px;
+        padding: 1px 5px;
+    }
+    .sidebar-group-label {
+        font-size: 9px;
+        padding: 0 10px 6px;
+    }
+    .sidebar-icon {
+        width: 15px;
+        height: 15px;
+    }
+    .sidebar-link-indicator {
+        left: -18px;
+        height: calc(100% - 8px);
+    }
+    .sidebar-dropdown .dropdown-item {
+        padding: 9px 12px;
+        font-size: 0.75rem;
+        min-height: 36px;
+    }
+    .sidebar-dropdown .dropdown-item svg {
+        width: 15px;
+        height: 15px;
+    }
+    .topbar-hamburger {
+        padding: 6px;
+    }
+    .topbar-hamburger svg {
+        width: 17px;
+        height: 17px;
+    }
+    .topbar-right {
+        gap: 4px;
+    }
+    .topbar-left {
+        gap: 8px;
+    }
+    .nav-links {
+        gap: 0;
+    }
+    .nav-link {
+        padding: 6px 3px;
+        font-size: 0.7rem;
+    }
+    .nav-link span {
+        font-size: 0.65rem;
+    }
+    .nav-icon {
+        width: 13px;
+        height: 13px;
+    }
+    .nav-separator {
+        margin: 0 2px;
+    }
+    .nav-user-btn {
+        padding: 3px 6px 3px 3px;
+    }
+    .nav-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 0.65rem;
+    }
+    .nav-dropdown {
+        min-width: 180px;
+    }
+    .dropdown-header {
+        padding: 12px 12px 8px;
+    }
+    .dropdown-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.75rem;
+    }
+    .dropdown-name {
+        font-size: 0.75rem;
+    }
+    .dropdown-role {
+        font-size: 0.6rem;
+    }
+    .dropdown-item {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+    }
+    .theme-toggle {
+        width: 30px;
+        height: 30px;
+    }
+    .theme-toggle svg {
+        width: 14px;
+        height: 14px;
+    }
+    .navbar {
+        height: 52px;
+    }
+    .nav-inner {
+        padding: 0 12px;
+    }
+    .brand-icon-wrapper {
+        width: 30px;
+        height: 30px;
+    }
+    .brand-icon-wrapper svg {
+        width: 18px;
+        height: 18px;
+    }
+    .brand-title {
+        font-size: 0.8rem;
+    }
+    .brand-subtitle {
+        font-size: 0.5rem;
+    }
+    .container {
+        padding: 20px 12px 32px;
+    }
+    .hero-panel {
+        padding: 32px 24px;
+        min-height: 300px;
+    }
+    .hero-panel h1 {
+        font-size: 1.5rem;
+    }
+    .hero-panel p {
+        font-size: 0.85rem;
+    }
+    .hero-badge {
+        font-size: 0.75rem;
+        padding: 6px 12px;
+    }
+    .chart-img {
+        max-height: 200px;
+        object-fit: contain;
+    }
+    .section-title {
+        font-size: 0.95rem;
+    }
+    .section-title svg {
+        width: 16px;
+        height: 16px;
+    }
+    .card-title {
+        font-size: 0.85rem;
+    }
+    .chart-card-title {
+        font-size: 0.8rem;
+    }
+    .chart-title-icon {
+        width: 15px;
+        height: 15px;
+    }
+    .students-table-title {
+        font-size: 0.85rem;
+    }
+    .students-table-count {
+        font-size: 0.7rem;
+    }
+    .filters-card {
+        padding: 14px 16px;
+    }
+    .filter-reset {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    .filters-reset {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+    .form-group-btn .btn {
+        height: 34px;
+    }
+    .filter-actions .btn {
+        height: 34px;
+    }
+    .search-input-wrapper input {
+        padding: 6px 10px 6px 28px;
+        font-size: 0.8rem;
+    }
+    .search-input-icon {
+        left: 8px;
+    }
+    .search-input-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    .alert-item {
+        padding: 8px 0;
+    }
+    .alert-item-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.7rem;
+    }
+    .alert-item-name {
+        font-size: 0.8rem;
+    }
+    .alert-item-meta {
+        font-size: 0.65rem;
+    }
+    .alert-item-debt {
+        font-size: 0.8rem;
+    }
+    .alerte-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 0.65rem;
+    }
+    .alerte-name {
+        font-size: 0.78rem;
+    }
+    .alerte-matricule {
+        font-size: 0.65rem;
+    }
+    .alerte-solde {
+        font-size: 0.8rem;
+    }
+    .avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.75rem;
+    }
+    .avatar-sm {
+        width: 24px;
+        height: 24px;
+        font-size: 0.6rem;
+    }
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+    }
+    .btn-icon svg {
+        width: 15px;
+        height: 15px;
+    }
+    .text-muted {
+        font-size: 0.75rem;
+    }
+    .form-help {
+        font-size: 0.65rem;
+    }
+    .page-subtitle {
+        font-size: 0.8rem;
+    }
+    .spinner {
+        width: 16px;
+        height: 16px;
+    }
+}
