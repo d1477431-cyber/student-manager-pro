@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">👤 Gestion des Utilisateurs</h1>
+    <div class="page-subtitle">Administration des comptes</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour à l'accueil</a>
+  </div>
+</div>
+
+<div class="card">
+  {% if users %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Identifiant</th>
+            <th>Rôle</th>
+            <th>Thème</th>
+            <th>Statut</th>
+            <th>Email</th>
+            <th>Dernière connexion</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td>
+                <div class="profile-chip">
+                  <div class="avatar">{{ user.username|first|upper }}</div>
+                  <strong>{{ user.username }}</strong>
+                </div>
+              </td>
+              <td>
+                <span class="pill 
+                  {% if user.role == 'Admin' %}pill-danger
+                  {% elif user.role == 'Secrétaire' %}pill-warning
+                  {% else %}pill-info{% endif %}
+                ">{{ user.role|default:"Professeur" }}</span>
+              </td>
+              <td style="color:var(--text-secondary);">{{ user.theme|default:"dark" }}</td>
+              <td>
+                {% if user.status == 'active' or user.is_active %}
+                  <span class="pill pill-success">✓ Actif</span>
+                {% else %}
+                  <span class="pill pill-danger">✗ Inactif</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--text-secondary);">{{ user.email|default:"-" }}</td>
+              <td style="color:var(--text-secondary); font-size:0.85rem;">{{ user.last_login|date:"d/m/Y H:i"|default:"Jamais" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">👤</div>
+      <p>Aucun utilisateur enregistré.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

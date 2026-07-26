@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+{% block title %}Statistiques Avancées - Student Manager{% endblock %}
+{% block page_title %}Statistiques Avancées{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Statistiques Avancées</h1>
+        <p class="page-subtitle">Analyse détaillée des performances académiques</p>
+    </div>
+</div>
+
+<!-- Cartes de résumé -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">{% icon 'graduation' 'w-6 h-6' %}</div>
+        <div class="label">Total Étudiants</div>
+        <strong>{{ total }}</strong>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">{% icon 'trending' 'w-6 h-6' %}</div>
+        <div class="label">Taux de Réussite</div>
+        <strong>{{ taux_reussite }}%</strong>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">{% icon 'trophy' 'w-6 h-6' %}</div>
+        <div class="label">Mentions Excellent</div>
+        <strong>{{ mentions.Excellent }}</strong>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">{% icon 'warning' 'w-6 h-6' %}</div>
+        <div class="label">Insuffisant</div>
+        <strong>{{ mentions.Insuffisant }}</strong>
+    </div>
+</div>
+
+<!-- Graphiques -->
+{% if matplotlib_available and charts %}
+<div class="dashboard-grid">
+    {% if charts.mentions %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'chart_pie' 'w-5 h-5' %}
+            Répartition des mentions
+        </h3>
+        <img src="data:image/png;base64,{{ charts.mentions }}" alt="Répartition des mentions" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.statut %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'check_circle' 'w-5 h-5' %}
+            Répartition par statut
+        </h3>
+        <img src="data:image/png;base64,{{ charts.statut }}" alt="Répartition par statut" style="width:100%;max-width:400px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.repartition_filieres %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'users' 'w-5 h-5' %}
+            Répartition par filière
+        </h3>
+        <img src="data:image/png;base64,{{ charts.repartition_filieres }}" alt="Répartition par filière" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.filieres %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'chart_bar' 'w-5 h-5' %}
+            Moyenne par filière
+        </h3>
+        <img src="data:image/png;base64,{{ charts.filieres }}" alt="Moyenne par filière" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.niveaux %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'schedule' 'w-5 h-5' %}
+            Moyenne par niveau
+        </h3>
+        <img src="data:image/png;base64,{{ charts.niveaux }}" alt="Moyenne par niveau" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.taux_reussite_filiere %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'trophy' 'w-5 h-5' %}
+            Taux de réussite par filière
+        </h3>
+        <img src="data:image/png;base64,{{ charts.taux_reussite_filiere }}" alt="Taux de réussite par filière" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.distribution %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'chart' 'w-5 h-5' %}
+            Distribution des moyennes
+        </h3>
+        <img src="data:image/png;base64,{{ charts.distribution }}" alt="Distribution des moyennes" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.inscriptions %}
+    <div class="card dashboard-card">
+        <h3>
+            {% icon 'trending' 'w-5 h-5' %}
+            Évolution des inscriptions
+        </h3>
+        <img src="data:image/png;base64,{{ charts.inscriptions }}" alt="Évolution des inscriptions" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+</div>
+{% elif not matplotlib_available %}
+<div class="card" style="text-align:center;padding:40px;">
+    <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">{% icon 'database' 'w-12 h-12' %}</div>
+    <h3>Matplotlib non installé</h3>
+    <p class="text-muted" style="margin-top:8px;">Installez matplotlib pour voir les graphiques : <code>pip install matplotlib</code></p>
+</div>
+{% endif %}
+
+<!-- Tableau des moyennes par filière -->
+{% if moy_par_filiere %}
+<div class="card" style="margin-top:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        {% icon 'dashboard' 'w-5 h-5' %}
+        Synthèse par filière
+    </h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Filière</th>
+                    <th>Moyenne Générale</th>
+                    <th>Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for filiere, moyenne in moy_par_filiere.items %}
+                <tr>
+                    <td><strong>{{ filiere }}</strong></td>
+                    <td>{{ moyenne }}/20</td>
+                    <td>
+                        {% if moyenne >= 14 %}
+                        <span class="pill pill-success">Excellent</span>
+                        {% elif moyenne >= 12 %}
+                        <span class="pill pill-info">Bien</span>
+                        {% elif moyenne >= 10 %}
+                        <span class="pill pill-warning">Passable</span>
+                        {% else %}
+                        <span class="pill pill-danger">À améliorer</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tableau des moyennes par niveau -->
+{% if moy_par_niveau %}
+<div class="card" style="margin-top:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        {% icon 'trophy' 'w-5 h-5' %}
+        Synthèse par niveau
+    </h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Niveau</th>
+                    <th>Moyenne Générale</th>
+                    <th>Performance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for niveau, moyenne in moy_par_niveau.items %}
+                <tr>
+                    <td><strong>{{ niveau }}</strong></td>
+                    <td>{{ moyenne }}/20</td>
+                    <td>
+                        {% if moyenne >= 14 %}
+                        <span class="pill pill-success">Excellent</span>
+                        {% elif moyenne >= 12 %}
+                        <span class="pill pill-info">Bien</span>
+                        {% elif moyenne >= 10 %}
+                        <span class="pill pill-warning">Passable</span>
+                        {% else %}
+                        <span class="pill pill-danger">À améliorer</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Détail des mentions -->
+<div class="card" style="margin-top:24px;">
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        {% icon 'users' 'w-5 h-5' %}
+        Distribution des mentions
+    </h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mention</th>
+                    <th>Intervalle</th>
+                    <th>Nombre d'étudiants</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><span class="pill pill-success">Excellent</span></td><td>18 - 20</td><td><strong>{{ mentions.Excellent }}</strong></td></tr>
+                <tr><td><span class="pill pill-success">Très bien</span></td><td>16 - 17.99</td><td><strong>{{ mentions.Très_bien }}</strong></td></tr>
+                <tr><td><span class="pill pill-info">Bien</span></td><td>14 - 15.99</td><td><strong>{{ mentions.Bien }}</strong></td></tr>
+                <tr><td><span class="pill pill-info">Assez bien</span></td><td>12 - 13.99</td><td><strong>{{ mentions.Assez_bien }}</strong></td></tr>
+                <tr><td><span class="pill pill-warning">Passable</span></td><td>10 - 11.99</td><td><strong>{{ mentions.Passable }}</strong></td></tr>
+                <tr><td><span class="pill pill-danger">Insuffisant</span></td><td>0 - 9.99</td><td><strong>{{ mentions.Insuffisant }}</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

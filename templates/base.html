@@ -3,202 +3,487 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Manager Pro</title>
-    <style>
-        :root {
-            --bg: #f4f7fb;
-            --surface: rgba(255, 255, 255, 0.94);
-            --surface-strong: #ffffff;
-            --text: #0f172a;
-            --muted: #64748b;
-            --primary: #4f46e5;
-            --primary-2: #7c3aed;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --border: #e2e8f0;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-            background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
-            color: var(--text);
-        }
-        .navbar {
-            background: linear-gradient(90deg, #111827 0%, #1f2937 100%);
-            color: white;
-            padding: 18px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
-        }
-        .brand {
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            font-size: 1.05rem;
-        }
-        .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
-        .nav-links a {
-            color: white;
-            text-decoration: none;
-            padding: 10px 14px;
-            border-radius: 999px;
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-        .nav-links a:hover {
-            background: rgba(255,255,255,0.14);
-            transform: translateY(-1px);
-        }
-        .container {
-            max-width: 1220px;
-            margin: 28px auto 42px;
-            padding: 0 20px 24px;
-        }
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .page-title {
-            font-size: 1.75rem;
-            font-weight: 800;
-            margin: 0;
-            color: #111827;
-        }
-        .page-subtitle { color: var(--muted); margin-top: 6px; }
-        .card {
-            background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.7);
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-            padding: 24px;
-            backdrop-filter: blur(12px);
-        }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 14px;
-            margin-bottom: 18px;
-        }
-        .stat-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 16px 18px;
-        }
-        .stat-card .label { color: var(--muted); font-size: 0.9rem; }
-        .stat-card strong { display: block; font-size: 1.25rem; margin-top: 6px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; }
-        th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
-        th {
-            text-align: left;
-            font-weight: 700;
-            color: white;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
-        }
-        tbody tr:hover { background: #f8fafc; }
-        a.button, button {
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
-            color: white;
-            border: none;
-            border-radius: 999px;
-            padding: 11px 16px;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.20);
-        }
-        a.button:hover, button:hover { transform: translateY(-1px); }
-        .button-secondary { background: #64748b; box-shadow: none; }
-        .button-danger { background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%); box-shadow: none; }
-        .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-        .form-group { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 8px; font-weight: 700; color: #334155; }
-        input, textarea, select {
-            width: 100%;
-            padding: 12px 14px;
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            font-size: 1rem;
-            background: #fbfdff;
-            color: var(--text);
-        }
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
-        }
-        textarea { min-height: 120px; resize: vertical; }
-        .flash {
-            border-radius: 14px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            border: 1px solid transparent;
-        }
-        .flash-success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
-        .flash-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-        .login-shell {
-            display: grid;
-            grid-template-columns: 1.05fr 0.95fr;
-            gap: 22px;
-            align-items: center;
-        }
-        .hero-panel {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            min-height: 480px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .hero-panel h1 { font-size: 2rem; margin-bottom: 10px; }
-        .hero-panel p { opacity: 0.9; line-height: 1.7; }
-        .hero-badge {
-            display: inline-block;
-            width: fit-content;
-            padding: 7px 12px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.18);
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            font-weight: 700;
-        }
-        .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
-        @media (max-width: 900px) {
-            .login-shell { grid-template-columns: 1fr; }
-            .form-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+    <title>{% block title %}Student Manager Pro{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    {% load static %}
+    <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
+    <link rel="stylesheet" href="{% static 'css/student_manager.css' %}">
 </head>
 <body>
-    <div class="navbar">
-        <div class="brand">Student Manager Pro</div>
-        <div class="nav-links">
-            <a href="{% url 'index' %}">Accueil</a>
-            <a href="{% url 'add_student' %}">Ajouter</a>
-            {% if request.user.is_authenticated %}
-                <a href="{% url 'logout' %}">Déconnexion</a>
-            {% else %}
-                <a href="{% url 'login' %}">Connexion</a>
-            {% endif %}
+
+{% if user.is_authenticated %}
+
+    <!-- ===== OVERLAY MOBILE ===== -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <!-- Logo -->
+        <a href="{% url 'index' %}" class="sidebar-logo">
+            <div class="sidebar-logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#04342C" stroke-width="2" aria-hidden="true"><path d="M22 10v6M2 10l10-5 10 5M6 12v5"/><path d="M18 12v5"/><path d="M10 12v5"/><path d="M4 22h16a2 2 0 002-2v-4a2 2 0 00-2-2H4a2 2 0 00-2 2v4a2 2 0 002 2z"/></svg>
+            </div>
+            <div class="sidebar-logo-text">
+                <span class="sidebar-logo-title">Student Manager</span>
+                <span class="sidebar-logo-subtitle">v3.0 — web</span>
+            </div>
+        </a>
+
+        <!-- Navigation groupée -->
+        {% if user.role == 'Admin' %}
+
+        <!-- ===== GÉNÉRAL ===== -->
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Général</div>
+            <a href="{% url 'index' %}" class="sidebar-link {% if request.path == '/' %}active{% endif %}" {% if request.path == '/' %}aria-current="page"{% endif %}>
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Tableau de bord</span>
+            </a>
+            <a href="{% url 'add_student' %}" class="sidebar-link {% if 'add' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 8h2v8"/><path d="M8 11h8"/></svg>
+                <span>Inscription étudiant</span>
+            </a>
         </div>
-    </div>
-    <div class="container">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="flash flash-{{ message.tags }}">{{ message }}</div>
-            {% endfor %}
+
+        <!-- ===== COMMUNICATION ===== -->
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Communication</div>
+            <a href="{% url 'messagerie' %}" class="sidebar-link {% if 'messagerie' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+                <span>Messages</span>
+                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+            </a>
+            <a href="{% url 'annonces' %}" class="sidebar-link {% if 'annonces' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                <span>Annonces</span>
+            </a>
+        </div>
+
+        <!-- ===== PÉDAGOGIE ===== -->
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Pédagogie</div>
+            <a href="{% url 'emploi_du_temps' %}" class="sidebar-link {% if 'emploi' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <span>Planning</span>
+            </a>
+            <a href="{% url 'classement' %}" class="sidebar-link {% if 'classement' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5L12 22l-3.5-8.5"/></svg>
+                <span>Classement</span>
+            </a>
+            <a href="{% url 'bulletins_list' %}" class="sidebar-link {% if 'bulletins' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                <span>Bulletins</span>
+            </a>
+            <a href="{% url 'absences' %}" class="sidebar-link {% if 'absences' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
+                <span>Absences</span>
+                <span class="sidebar-badge sidebar-badge-warning">2</span>
+            </a>
+            <a href="{% url 'stats_avancees' %}" class="sidebar-link {% if 'stats' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 20V10"/><path d="M12 20V4"/><path d="M4 20V14"/></svg>
+                <span>Statistiques</span>
+            </a>
+        </div>
+
+        <!-- ===== FINANCES ===== -->
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Finances</div>
+            <a href="{% url 'paiements' %}" class="sidebar-link {% if 'paiements' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M18 12h.01"/><path d="M22 9H2"/></svg>
+                <span>Paiements</span>
+                <span class="sidebar-badge sidebar-badge-urgent">3</span>
+            </a>
+            <a href="{% url 'rapports_financiers' %}" class="sidebar-link {% if 'rapports' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 20V10"/><path d="M12 20V4"/><path d="M4 20V14"/></svg>
+                <span>Rapports financiers</span>
+            </a>
+        </div>
+
+        <!-- ===== ADMINISTRATION ===== -->
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Administration</div>
+            <a href="{% url 'logs' %}" class="sidebar-link {% if 'logs' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                <span>Journal d'audit</span>
+            </a>
+            <a href="{% url 'utilisateurs' %}" class="sidebar-link {% if 'utilisateurs' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M1 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/><circle cx="17" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+                <span>Utilisateurs</span>
+            </a>
+            <a href="{% url 'logs' %}" class="sidebar-link">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                <span>Sauvegardes</span>
+            </a>
+            <a href="{% url 'change_password' %}" class="sidebar-link">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                <span>Mot de passe</span>
+            </a>
+        </div>
+
+        {% elif user.role == 'Secrétaire' %}
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Général</div>
+            <a href="{% url 'index' %}" class="sidebar-link {% if request.path == '/' %}active{% endif %}" {% if request.path == '/' %}aria-current="page"{% endif %}>
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Tableau de bord</span>
+            </a>
+            <a href="{% url 'add_student' %}" class="sidebar-link {% if 'add' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M11 8h2v8"/><path d="M8 11h8"/></svg>
+                <span>Inscriptions</span>
+            </a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Pédagogie</div>
+            <a href="{% url 'classement' %}" class="sidebar-link {% if 'classement' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5L12 22l-3.5-8.5"/></svg>
+                <span>Classement</span>
+            </a>
+            <a href="{% url 'absences' %}" class="sidebar-link {% if 'absences' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
+                <span>Absences</span>
+                <span class="sidebar-badge sidebar-badge-warning">2</span>
+            </a>
+            <a href="{% url 'emploi_du_temps' %}" class="sidebar-link {% if 'emploi' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <span>Planning</span>
+            </a>
+            <a href="{% url 'stats_avancees' %}" class="sidebar-link {% if 'stats' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 20V10"/><path d="M12 20V4"/><path d="M4 20V14"/></svg>
+                <span>Statistiques</span>
+            </a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Finances</div>
+            <a href="{% url 'paiements' %}" class="sidebar-link {% if 'paiements' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M18 12h.01"/><path d="M22 9H2"/></svg>
+                <span>Paiements</span>
+                <span class="sidebar-badge sidebar-badge-urgent">3</span>
+            </a>
+            <a href="{% url 'rapports_financiers' %}" class="sidebar-link {% if 'rapports' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 20V10"/><path d="M12 20V4"/><path d="M4 20V14"/></svg>
+                <span>Rapports financiers</span>
+            </a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Communication</div>
+            <a href="{% url 'messagerie' %}" class="sidebar-link {% if 'messagerie' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+                <span>Messages</span>
+                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+            </a>
+        </div>
+
+        {% elif user.role == 'Professeur' %}
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Général</div>
+            <a href="{% url 'index' %}" class="sidebar-link {% if request.path == '/' %}active{% endif %}" {% if request.path == '/' %}aria-current="page"{% endif %}>
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Tableau de bord</span>
+            </a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Pédagogie</div>
+            <a href="{% url 'emploi_du_temps' %}" class="sidebar-link {% if 'emploi' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <span>Emploi du temps</span>
+            </a>
+            <a href="{% url 'absences' %}" class="sidebar-link {% if 'absences' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
+                <span>Absences</span>
+                <span class="sidebar-badge sidebar-badge-warning">2</span>
+            </a>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-group-label">Communication</div>
+            <a href="{% url 'messagerie' %}" class="sidebar-link {% if 'messagerie' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+                <span>Messages</span>
+                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+            </a>
+        </div>
         {% endif %}
-        {% block content %}{% endblock %}
-    </div>
+
+        <!-- Spacer pour pousser le profil en bas -->
+        <div class="sidebar-spacer"></div>
+
+        <!-- Version -->
+        <div class="sidebar-version">v3.0 — web</div>
+
+        <!-- Profil utilisateur -->
+        <div class="sidebar-profile" id="sidebarProfile">
+            <div class="sidebar-profile-avatar">{{ request.user.username|first|upper }}</div>
+            <div class="sidebar-profile-info">
+                <div class="sidebar-profile-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                <div class="sidebar-profile-role">{{ request.user.get_role_display }}</div>
+            </div>
+            <a href="{% url 'logout' %}" class="sidebar-logout-btn" title="Déconnexion">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/></svg>
+            </a>
+            <div class="sidebar-dropdown" id="sidebarDropdown">
+                <a href="{% url 'change_password' %}" class="dropdown-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    <span>Mot de passe</span>
+                </a>
+                <a href="{% url 'logout' %}" class="dropdown-item dropdown-danger">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/></svg>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="topbar-hamburger" id="hamburgerBtn" aria-label="Menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div class="topbar-breadcrumbs">
+                <span class="breadcrumb-current">{% block page_title %}{% endblock %}</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <!-- Actions rapides -->
+            <a href="{% url 'add_student' %}" class="topbar-action-btn" title="Ajouter un étudiant">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10" cy="8" r="4"/><path d="M2 21v-2a4 4 0 014-4h8a4 4 0 014 4v2"/><path d="M17 8h6"/><path d="M20 5v6"/></svg>
+            </a>
+            <a href="{% url 'paiements' %}" class="topbar-action-btn" title="Paiements">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M18 12h.01"/><path d="M22 9H2"/></svg>
+            </a>
+            <a href="{% url 'absences' %}" class="topbar-action-btn" title="Absences">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
+            </a>
+            <a href="{% url 'messagerie' %}" class="topbar-action-btn" title="Messages">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
+            </a>
+            <div class="topbar-divider"></div>
+            <!-- Barre de recherche globale -->
+            <div class="topbar-search">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="search-input" type="text" placeholder="Rechercher un étudiant...">
+                <span class="search-kbd">⌘K</span>
+            </div>
+            <a href="{% url 'notifications' %}" class="topbar-btn" title="Notifications">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                {% if notifications_non_lues > 0 %}
+                <span class="sidebar-badge sidebar-badge-urgent" style="position:absolute;top:-4px;right:-4px;font-size:0.6rem;min-width:16px;height:16px;line-height:16px;">{{ notifications_non_lues }}</span>
+                {% endif %}
+            </a>
+            <button class="topbar-btn" id="themeToggle" title="Thème">
+                <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </button>
+        </div>
+    </header>
+
+{% else %}
+    <!-- ===== NAVBAR PUBLIQUE ===== -->
+    <nav class="navbar">
+        <div class="nav-inner">
+            <a href="{% url 'login' %}" class="brand">
+                <div class="brand-icon-wrapper">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5M6 12v5"/><path d="M18 12v5"/><path d="M10 12v5"/><path d="M4 22h16a2 2 0 002-2v-4a2 2 0 00-2-2H4a2 2 0 00-2 2v4a2 2 0 002 2z"/></svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">Student Manager</span>
+                    <span class="brand-subtitle">Gestion scolaire</span>
+                </div>
+            </a>
+            <div class="nav-links">
+                <a href="{% url 'login' %}" class="nav-link {% if request.path == '/login/' %}active{% endif %}"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Accueil</span></a>
+                <a href="#about" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span>À propos</span></a>
+                <a href="#contact" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>Contact</span></a>
+                <a href="{% url 'login' %}" class="nav-link"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg><span>Se connecter</span></a>
+            </div>
+        </div>
+    </nav>
+{% endif %}
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash flash-{{ message.tags }}">
+                        {% if message.tags == 'success' %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+                        {% elif message.tags == 'error' %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6"/><path d="M9 9l6 6"/></svg>
+                        {% elif message.tags == 'warning' %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                        {% else %}<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        {% endif %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        (function() {
+            // === Sidebar toggle (mobile) ===
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const hamburger = document.getElementById('hamburgerBtn');
+            if (sidebar && overlay && hamburger) {
+                hamburger.addEventListener('click', function() {
+                    sidebar.classList.toggle('open');
+                    overlay.classList.toggle('show');
+                });
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('show');
+                });
+            }
+
+            // === Sidebar profile dropdown ===
+            const profileMenu = document.getElementById('sidebarProfile');
+            const profileDropdown = document.getElementById('sidebarDropdown');
+            if (profileMenu && profileDropdown) {
+                profileMenu.addEventListener('click', function(e) {
+                    const target = e.target.closest('.sidebar-logout-btn');
+                    if (target) return;
+                    e.stopPropagation();
+                    profileDropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', function(e) {
+                    if (!profileMenu.contains(e.target) && !profileDropdown.contains(e.target)) {
+                        profileDropdown.classList.remove('show');
+                    }
+                });
+            }
+
+            // === Theme toggle ===
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    document.body.classList.toggle('dark');
+                    const isDark = document.body.classList.contains('dark');
+                    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                    if (themeIcon) {
+                        if (isDark) {
+                            themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+                        } else {
+                            themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+                        }
+                    }
+                });
+                const savedTheme = localStorage.getItem('theme');
+                if (savedTheme === 'dark') {
+                    document.body.classList.add('dark');
+                    if (themeIcon) themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+                }
+            }
+
+            // === Page title fallback ===
+            function setBreadcrumbFallback() {
+                const bc = document.querySelector('.breadcrumb-current');
+                if (bc && !bc.textContent.trim()) {
+                    const path = window.location.pathname;
+                    const titles = {
+                        '/': 'Dashboard',
+                        '/add/': 'Ajouter un étudiant',
+                        '/classement/': 'Classement',
+                        '/import-csv/': 'Import CSV',
+                        '/export/csv/': 'Export',
+                        '/paiements/': 'Paiements',
+                        '/absences/': 'Absences',
+                        '/emploi-du-temps/': 'Emploi du temps',
+                        '/messagerie/': 'Messages',
+                        '/annonces/': 'Annonces',
+                        '/stats/': 'Statistiques',
+                        '/utilisateurs/': 'Utilisateurs',
+                        '/logs/': 'Journal',
+                    };
+                    bc.textContent = titles[path] || 'Application';
+                }
+            }
+            setBreadcrumbFallback();
+
+            // === Utility functions ===
+            function showToast(message, type = 'info', duration = 4000) {
+                const container = document.getElementById('toastContainer');
+                if (!container) return;
+                const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+                container.appendChild(toast);
+                setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
+            }
+            function showConfirmModal(title, message, onConfirm) {
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.innerHTML = `<div class="modal"><h3>${title}</h3><p>${message}</p><div class="action-row"><button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Annuler</button><button class="btn btn-danger" id="confirmBtn">Confirmer</button></div></div>`;
+                document.body.appendChild(overlay);
+                document.getElementById('confirmBtn').addEventListener('click', function() { overlay.remove(); if (onConfirm) onConfirm(); });
+                overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+            }
+            document.querySelectorAll('.flash').forEach(flash => {
+                setTimeout(() => { flash.style.transition = 'all 0.4s ease'; flash.style.opacity = '0'; flash.style.transform = 'translateX(100px)'; setTimeout(() => flash.remove(), 400); }, 5000);
+            });
+            function animateCounter(element, target, duration = 1000) {
+                const start = 0, startTime = performance.now();
+                function update(currentTime) {
+                    const elapsed = currentTime - startTime, progress = Math.min(elapsed / duration, 1), eased = 1 - Math.pow(1 - progress, 3);
+                    element.textContent = Math.floor(start + (target - start) * eased).toLocaleString();
+                    if (progress < 1) requestAnimationFrame(update);
+                }
+                requestAnimationFrame(update);
+            }
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('.stat-card strong').forEach(el => {
+                    const text = el.textContent.replace(/[^0-9.]/g, ''), num = parseFloat(text);
+                    if (!isNaN(num) && num > 0 && num < 100000) { el.textContent = '0'; setTimeout(() => animateCounter(el, Math.round(num)), 300); }
+                });
+            });
+            document.querySelectorAll('form[action*="delete"]').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const studentName = this.closest('tr')?.querySelector('.profile-chip div div')?.textContent?.trim() || 'cet étudiant';
+                    showConfirmModal('🗑️ Confirmer la suppression', `Êtes-vous sûr de vouloir supprimer <strong>${studentName}</strong> ? Cette action est irréversible.`, () => { this.submit(); });
+                });
+            });
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    const ripple = document.createElement('span'), rect = this.getBoundingClientRect(), size = Math.max(rect.width, rect.height);
+                    ripple.style.cssText = `position:absolute;width:${size}px;height:${size}px;background:rgba(255,255,255,0.3);border-radius:50%;pointer-events:none;transform:scale(0);animation:rippleAnim 0.6s ease-out;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;`;
+                    this.appendChild(ripple); setTimeout(() => ripple.remove(), 600);
+                });
+            });
+            const style = document.createElement('style');
+            style.textContent = `@keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }`;
+            document.head.appendChild(style);
+        })();
+    </script>
 </body>
 </html>

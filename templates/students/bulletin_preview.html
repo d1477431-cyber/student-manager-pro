@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Bulletin de {{ student.prenom }} {{ student.nom }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% icon 'file_text' 'w-6 h-6' %} Bulletin de notes</h1>
+    <div class="page-subtitle">{{ student.prenom }} {{ student.nom }} ({{ student.matricule }})</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-primary" href="{% url 'bulletin_pdf' student.matricule %}">
+      {% icon 'download' 'w-4 h-4' %} Télécharger le PDF
+    </a>
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+<!-- Carte d'identité -->
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+    <img src="{{ student.photo_url }}" alt="" class="avatar" style="width:64px; height:64px; border-radius:50%; object-fit:cover;">
+    <div style="flex:1;">
+      <h2 style="margin:0 0 4px 0;">{{ student.nom }} {{ student.prenom }}</h2>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; color:var(--text-secondary); font-size:0.9rem;">
+        <span>{% icon 'hash' 'w-4 h-4' %} {{ student.matricule }}</span>
+        <span>{% icon 'book' 'w-4 h-4' %} {{ student.filiere|default:'-' }}</span>
+        <span>{% icon 'layers' 'w-4 h-4' %} {{ student.niveau|default:'-' }}</span>
+        <span>{% icon 'user' 'w-4 h-4' %} {{ student.age }} ans</span>
+        <span>
+          <span class="pill {% if student.statut == 'Actif' %}pill-success{% else %}pill-danger{% endif %}">
+            {{ student.statut }}
+          </span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Résultats académiques -->
+<div class="card" style="margin-bottom:20px;">
+  <h3 style="margin-bottom:16px;">{% icon 'award' 'w-5 h-5' %} Résultats académiques</h3>
+  
+  {% if notes_list %}
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Note /20</th>
+          <th>Appréciation</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for note in notes_list %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td><strong>{{ note|floatformat:2 }}</strong></td>
+          <td>
+            {% if note >= 18 %}
+              <span class="pill pill-success">Excellent</span>
+            {% elif note >= 16 %}
+              <span class="pill pill-success">Très bien</span>
+            {% elif note >= 14 %}
+              <span class="pill pill-info">Bien</span>
+            {% elif note >= 12 %}
+              <span class="pill pill-info">Assez bien</span>
+            {% elif note >= 10 %}
+              <span class="pill pill-warning">Passable</span>
+            {% else %}
+              <span class="pill pill-danger">Insuffisant</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">{% icon 'file_text' 'w-12 h-12' %}</div>
+    <p>Aucune note enregistrée pour cet étudiant.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Récapitulatif -->
+<div class="card">
+  <h3 style="margin-bottom:16px;">{% icon 'clipboard' 'w-5 h-5' %} Récapitulatif</h3>
+  <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+    <div class="stat-card" style="border-left:4px solid var(--primary);">
+      <div class="stat-icon">{% icon 'chart' 'w-6 h-6' %}</div>
+      <div class="label">Moyenne générale</div>
+      <strong>{{ moyenne|floatformat:2 }} / 20</strong>
+    </div>
+    <div class="stat-card" style="border-left:4px solid var(--info);">
+      <div class="stat-icon">{% icon 'star' 'w-6 h-6' %}</div>
+      <div class="label">Mention</div>
+      <strong>{{ appreciation }}</strong>
+    </div>
+    <div class="stat-card" style="border-left:4px solid {% if moyenne >= 10 %}var(--success){% else %}var(--danger){% endif %};">
+      <div class="stat-icon">{% if moyenne >= 10 %}{% icon 'check_circle' 'w-6 h-6' %}{% else %}{% icon 'x_circle' 'w-6 h-6' %}{% endif %}</div>
+      <div class="label">Décision</div>
+      <strong>{% if moyenne >= 10 %}ADMIS(E){% else %}AJOURNÉ(E){% endif %}</strong>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center; margin-top:24px; padding:16px; color:var(--muted); font-size:0.85rem;">
+  Généré le {% now "d/m/Y à H:i" %} | Student Manager PRO
+</div>
+{% endblock %}

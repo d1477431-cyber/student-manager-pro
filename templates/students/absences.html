@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📅 Gestion des Absences</h1>
+    <div class="page-subtitle">Suivi des présences et absences par étudiant</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+<div class="dashboard-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr); gap:20px;">
+
+  <!-- Formulaire -->
+  <div class="card">
+    <h3>➕ Enregistrer une absence</h3>
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Étudiant</label>
+        <select name="matricule" required>
+          <option value="">Sélectionner...</option>
+          {% for s in students %}
+          <option value="{{ s.matricule }}">{{ s.matricule }} - {{ s.nom }} {{ s.prenom }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" name="date" required value="{{ today }}">
+      </div>
+      <div class="form-group">
+        <label>Matière</label>
+        <input type="text" name="matiere" placeholder="Ex: Mathématiques">
+      </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select name="statut">
+          <option value="absent">Absent</option>
+          <option value="retard">Retard</option>
+          <option value="present">Présent</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex; align-items:center; gap:8px;">
+        <input type="checkbox" name="justifiee" id="justifiee" style="width:auto;">
+        <label for="justifiee" style="margin:0;">Justifiée</label>
+      </div>
+      <div class="form-group">
+        <label>Commentaire</label>
+        <textarea name="commentaire" rows="2" placeholder="Optionnel..."></textarea>
+      </div>
+      <button class="btn btn-primary w-full" type="submit">✅ Enregistrer</button>
+    </form>
+  </div>
+
+  <!-- Liste -->
+  <div class="card">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+      <div class="card-title">📋 Historique des absences</div>
+      <form method="get" style="display:flex; gap:8px; flex-wrap:wrap;">
+        <select name="filiere" onchange="this.form.submit()" style="min-width:120px;">
+          <option value="">Toutes filières</option>
+          {% for f in filieres %}<option value="{{ f }}" {% if filiere_filter == f %}selected{% endif %}>{{ f }}</option>{% endfor %}
+        </select>
+        <input type="text" name="matricule" value="{{ matricule_filter }}" placeholder="Matricule..." style="flex:1; min-width:100px; max-width:140px; padding:6px 10px; border:1.5px solid var(--border); border-radius:8px; background:var(--surface-strong); color:var(--text);">
+        <button class="btn btn-secondary btn-sm" type="submit">🔍</button>
+      </form>
+    </div>
+    {% if absences %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr><th>Étudiant</th><th>Date</th><th>Matière</th><th>Statut</th><th>Justifiée</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for a in absences %}
+          <tr>
+            <td><strong>{{ a.student.nom }} {{ a.student.prenom }}</strong><br><small style="color:var(--muted);">{{ a.student.matricule }}</small></td>
+            <td>{{ a.date }}</td>
+            <td>{{ a.matiere|default:"-" }}</td>
+            <td>
+              <span class="pill {% if a.statut == 'absent' %}pill-danger{% elif a.statut == 'retard' %}pill-warning{% else %}pill-success{% endif %}">
+                {{ a.get_statut_display }}
+              </span>
+            </td>
+            <td>{% if a.justifiee %}<span class="pill pill-success">✓</span>{% else %}<span class="pill pill-danger">✗</span>{% endif %}</td>
+            <td>
+              <form method="post" action="{% url 'supprimer_absence' a.id %}">
+                {% csrf_token %}
+                <button class="btn btn-danger btn-sm" type="submit">🗑️</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">📅</div><p>Aucune absence enregistrée.</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Stats par étudiant -->
+{% if stats_list %}
+<div class="card" style="margin-top:20px;">
+  <div class="card-title" style="margin-bottom:16px;">📊 Récapitulatif par étudiant</div>
+  <div class="table-container">
+    <table>
+      <thead><tr><th>Étudiant</th><th>Filière</th><th>Total absences</th><th>Justifiées</th><th>Injustifiées</th><th>Alerte</th></tr></thead>
+      <tbody>
+        {% for stat in stats_list %}
+        <tr>
+          <td><strong>{{ stat.student.nom }} {{ stat.student.prenom }}</strong></td>
+          <td>{{ stat.student.filiere|default:"-" }}</td>
+          <td>{{ stat.total }}</td>
+          <td><span class="pill pill-success">{{ stat.justifiees }}</span></td>
+          <td><span class="pill pill-danger">{{ stat.injustifiees }}</span></td>
+          <td>{% if stat.total > 3 %}<span class="pill pill-danger">⚠️ Excessif</span>{% else %}-{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Carte de {{ student.prenom }} {{ student.nom }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% icon 'id_card' 'w-6 h-6' %} Carte étudiante</h1>
+    <div class="page-subtitle">{{ student.prenom }} {{ student.nom }} ({{ student.matricule }})</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-primary" href="{% url 'carte_etudiant_pdf' student.matricule %}">
+      {% icon 'download' 'w-4 h-4' %} Télécharger le PDF
+    </a>
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+<!-- Aperçu de la carte -->
+<div style="display:flex; justify-content:center; margin-bottom:24px;">
+  <div class="carte-preview">
+    <!-- En-tête -->
+    <div class="carte-header">
+      <div class="carte-header-content">
+        <div class="carte-header-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5M6 12v5"/><path d="M18 12v5"/><path d="M10 12v5"/><path d="M4 22h16a2 2 0 002-2v-4a2 2 0 00-2-2H4a2 2 0 00-2 2v4a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+          <div class="carte-header-title">STUDENT MANAGER PRO</div>
+          <div class="carte-header-subtitle">CARTE ÉTUDIANT</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Corps -->
+    <div class="carte-body">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <img src="{{ student.photo_url }}" alt="" class="avatar" style="width:64px; height:64px; border-radius:8px; object-fit:cover; border:2px solid var(--border);">
+        <div style="flex:1;">
+          <div class="carte-name">{{ student.nom.upper }} {{ student.prenom }}</div>
+          <div class="carte-info">Matricule : <strong>{{ student.matricule }}</strong></div>
+          <div class="carte-info">Filière : {{ student.filiere|default:"-" }} | Niveau : {{ student.niveau|default:"-" }}</div>
+          <div class="carte-info">Moyenne : <strong>{{ moyenne|floatformat:2 }}/20</strong> | {{ appreciation }}</div>
+          <div class="carte-info">Statut : 
+            <span class="pill {% if student.statut == 'Actif' %}pill-success{% else %}pill-danger{% endif %}" style="font-size:0.7rem;">
+              {{ student.statut }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pied -->
+    <div class="carte-footer">
+      <span>Année {{ year }}-{{ year|add:1 }}</span>
+      <span>Signature : ___________</span>
+    </div>
+  </div>
+</div>
+
+<style>
+.carte-preview {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.carte-header {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  padding: 14px 18px;
+}
+.carte-header-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.carte-header-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.carte-header-title {
+  color: white;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+.carte-header-subtitle {
+  color: rgba(255,255,255,0.8);
+  font-size: 0.7rem;
+}
+.carte-body {
+  padding: 18px;
+}
+.carte-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.carte-info {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+  line-height: 1.5;
+}
+.carte-footer {
+  background: var(--bg-secondary);
+  padding: 10px 18px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+</style>
+{% endblock %}

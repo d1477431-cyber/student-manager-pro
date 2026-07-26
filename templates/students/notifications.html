@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% icon 'bell' 'w-6 h-6' %} Notifications</h1>
+    <div class="page-subtitle">Centre de notifications</div>
+  </div>
+  <div class="action-row">
+    <form method="post" action="{% url 'notifications_mark_all_read' %}" style="margin:0;">
+      {% csrf_token %}
+      <button class="btn btn-primary" type="submit">{% icon 'check' 'w-4 h-4' %} Tout marquer comme lu</button>
+    </form>
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+{% if notifications %}
+<div style="display:flex; flex-direction:column; gap:8px;">
+  {% for notif in notifications %}
+  <div class="card" style="border-left: 4px solid 
+    {% if notif.type == 'paiment' %}var(--danger)
+    {% elif notif.type == 'message' %}var(--primary)
+    {% elif notif.type == 'annonce' %}var(--warning)
+    {% elif notif.type == 'absence' %}var(--info)
+    {% elif notif.type == 'echeance' %}var(--warning)
+    {% else %}var(--muted){% endif %};
+    {% if not notif.lu %}background:var(--hover-bg);{% endif %}">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <div style="display:flex; gap:12px; align-items:flex-start; flex:1;">
+        <div style="font-size:1.3rem; margin-top:2px;">
+          {% if notif.type == 'paiment' %}💰
+          {% elif notif.type == 'message' %}✉️
+          {% elif notif.type == 'annonce' %}📢
+          {% elif notif.type == 'absence' %}⚠️
+          {% elif notif.type == 'echeance' %}⏰
+          {% else %}🔔
+          {% endif %}
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+            <strong style="color:var(--text);">{{ notif.titre }}</strong>
+            {% if not notif.lu %}<span class="pill pill-info" style="font-size:0.65rem; padding:1px 6px;">Nouveau</span>{% endif %}
+          </div>
+          <div style="color:var(--text-secondary); font-size:0.9rem; line-height:1.5;">{{ notif.message }}</div>
+          <div style="margin-top:6px; display:flex; align-items:center; gap:12px;">
+            <small style="color:var(--muted);">{% icon 'clock' 'w-3 h-3' %} {{ notif.date_creation|date:"d/m/Y H:i" }}</small>
+            {% if notif.lien %}
+            <a href="{{ notif.lien }}" class="btn btn-secondary btn-sm">{% icon 'eye' 'w-3 h-3' %} Voir</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% if not notif.lu %}
+      <form method="post" action="{% url 'notification_mark_read' notif.id %}" style="margin:0;">
+        {% csrf_token %}
+        <button class="btn btn-secondary btn-sm" type="submit" title="Marquer comme lu">{% icon 'check' 'w-4 h-4' %}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">{% icon 'bell' 'w-12 h-12' %}</div>
+  <p>Aucune notification pour le moment.</p>
+</div>
+{% endif %}
+{% endblock %}

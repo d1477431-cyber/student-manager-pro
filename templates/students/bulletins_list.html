@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Bulletins de notes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% icon 'file_text' 'w-6 h-6' %} Bulletins de notes</h1>
+    <div class="page-subtitle">Consultez et téléchargez les bulletins de tous les étudiants</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour au tableau de bord</a>
+  </div>
+</div>
+
+{% if students_data %}
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>Matricule</th>
+        <th>Nom & Prénom</th>
+        <th>Filière</th>
+        <th>Niveau</th>
+        <th>Moyenne</th>
+        <th>Mention</th>
+        <th>Statut</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in students_data %}
+      <tr>
+        <td><strong>{{ item.student.matricule }}</strong></td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <img src="{{ item.student.photo_url }}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+            <span>{{ item.student.nom }} {{ item.student.prenom }}</span>
+          </div>
+        </td>
+        <td>{{ item.student.filiere|default:'-' }}</td>
+        <td>{{ item.student.niveau|default:'-' }}</td>
+        <td>
+          <strong style="color:{% if item.moyenne >= 10 %}var(--success){% else %}var(--danger){% endif %};">
+            {{ item.moyenne|floatformat:2 }} / 20
+          </strong>
+        </td>
+        <td>
+          {% if item.moyenne >= 18 %}
+            <span class="pill pill-success">Excellent</span>
+          {% elif item.moyenne >= 16 %}
+            <span class="pill pill-success">Très bien</span>
+          {% elif item.moyenne >= 14 %}
+            <span class="pill pill-info">Bien</span>
+          {% elif item.moyenne >= 12 %}
+            <span class="pill pill-info">Assez bien</span>
+          {% elif item.moyenne >= 10 %}
+            <span class="pill pill-warning">Passable</span>
+          {% else %}
+            <span class="pill pill-danger">Insuffisant</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="pill {% if item.student.statut == 'Actif' %}pill-success{% else %}pill-danger{% endif %}">
+            {{ item.student.statut }}
+          </span>
+        </td>
+        <td>
+          <div class="action-row" style="justify-content:flex-start;">
+            <a class="btn btn-secondary btn-sm" href="{% url 'bulletin_preview' item.student.matricule %}" title="Aperçu du bulletin">
+              {% icon 'eye' 'w-4 h-4' %} Aperçu
+            </a>
+            <a class="btn btn-primary btn-sm" href="{% url 'bulletin_pdf' item.student.matricule %}" title="Télécharger le PDF">
+              {% icon 'download' 'w-4 h-4' %} PDF
+            </a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">{% icon 'file_text' 'w-16 h-16' %}</div>
+  <h3>Aucun étudiant</h3>
+  <p>Il n'y a pas encore d'étudiants inscrits. Ajoutez des étudiants pour générer des bulletins.</p>
+  <a class="btn btn-primary" href="{% url 'add_student' %}">{% icon 'plus' 'w-4 h-4' %} Ajouter un étudiant</a>
+</div>
+{% endif %}
+{% endblock %}

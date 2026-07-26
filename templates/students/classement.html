@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🏆 Tableau de Classement</h1>
+    <div class="page-subtitle">Classement des étudiants par moyenne générale</div>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+</div>
+
+<!-- Filtres -->
+<form method="get" class="card" style="margin-bottom:20px; padding:16px 24px;">
+  <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+    <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+      <label>Filière</label>
+      <select name="filiere" onchange="this.form.submit()">
+        <option value="">Toutes</option>
+        {% for f in filieres %}<option value="{{ f }}" {% if filiere_filter == f %}selected{% endif %}>{{ f }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="margin:0; flex:1; min-width:140px;">
+      <label>Niveau</label>
+      <select name="niveau" onchange="this.form.submit()">
+        <option value="">Tous</option>
+        {% for n in niveaux %}<option value="{{ n }}" {% if niveau_filter == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    {% if filiere_filter or niveau_filter %}
+    <a class="btn btn-secondary btn-sm" href="{% url 'classement' %}">✕ Réinitialiser</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Podium top 3 -->
+{% if classement %}
+<div style="display:flex; justify-content:center; gap:12px; margin-bottom:28px; flex-wrap:wrap;">
+  {% for item in classement|slice:":3" %}
+  <div style="text-align:center; padding:20px 24px; background:var(--surface); border-radius:16px; border:1px solid var(--border); box-shadow:var(--shadow-md); min-width:160px;">
+    <div style="font-size:2.5rem;">{% if item.rang == 1 %}🥇{% elif item.rang == 2 %}🥈{% else %}🥉{% endif %}</div>
+    <div style="font-weight:800; font-size:1.1rem; margin-top:8px;">{{ item.student.prenom }} {{ item.student.nom }}</div>
+    <div style="color:var(--muted); font-size:0.8rem;">{{ item.student.filiere|default:"-" }} / {{ item.student.niveau|default:"-" }}</div>
+    <div style="font-size:1.4rem; font-weight:800; color:var(--primary); margin-top:8px;">{{ item.moyenne|floatformat:2 }}</div>
+    <div style="font-size:0.8rem; color:var(--muted);">{{ item.appreciation }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Tableau complet -->
+<div class="card">
+  <div class="card-title" style="margin-bottom:16px;">📋 Classement complet ({{ classement|length }} étudiant(s))</div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr><th>Rang</th><th>Étudiant</th><th>Filière</th><th>Niveau</th><th>Moyenne</th><th>Mention</th><th>Statut</th></tr>
+      </thead>
+      <tbody>
+        {% for item in classement %}
+        <tr>
+          <td>
+            <strong style="font-size:1.1rem;">
+              {% if item.rang == 1 %}🥇{% elif item.rang == 2 %}🥈{% elif item.rang == 3 %}🥉{% else %}#{{ item.rang }}{% endif %}
+            </strong>
+          </td>
+          <td>
+            <div style="font-weight:600;">{{ item.student.nom }} {{ item.student.prenom }}</div>
+            <div style="font-size:0.8rem; color:var(--muted);">{{ item.student.matricule }}</div>
+          </td>
+          <td>{{ item.student.filiere|default:"-" }}</td>
+          <td>{{ item.student.niveau|default:"-" }}</td>
+          <td>
+            <strong style="font-size:1.05rem; color:{% if item.moyenne >= 14 %}var(--success){% elif item.moyenne >= 10 %}var(--info){% else %}var(--danger){% endif %};">
+              {{ item.moyenne|floatformat:2 }}
+            </strong>
+          </td>
+          <td><span class="pill {% if item.moyenne >= 14 %}pill-success{% elif item.moyenne >= 10 %}pill-info{% else %}pill-danger{% endif %}">{{ item.appreciation }}</span></td>
+          <td><span class="pill {% if item.student.statut == 'Actif' %}pill-success{% else %}pill-danger{% endif %}">{{ item.student.statut }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><div class="empty-icon">🏆</div><p>Aucun étudiant trouvé.</p></div></div>
+{% endif %}
+{% endblock %}

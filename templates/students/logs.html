@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📜 Journal d'audit</h1>
+    <div class="page-subtitle">Historique des actions importantes dans l'application</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour à l'accueil</a>
+  </div>
+</div>
+
+<div class="card">
+  {% if logs %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Date et Heure</th>
+            <th>Utilisateur</th>
+            <th>Événement</th>
+            <th>Détails</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr>
+              <td style="white-space:nowrap;">{{ log.timestamp|date:"d/m/Y H:i:s" }}</td>
+              <td>
+                <div class="profile-chip">
+                  <div class="avatar avatar-sm">{{ log.username|first|upper }}</div>
+                  <span>{{ log.username }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="pill 
+                  {% if 'ADD' in log.event or 'CREATE' in log.event %}pill-success
+                  {% elif 'DELETE' in log.event or 'FAILURE' in log.event %}pill-danger
+                  {% elif 'UPDATE' in log.event or 'CHANGE' in log.event %}pill-warning
+                  {% else %}pill-info{% endif %}
+                ">{{ log.event }}</span>
+              </td>
+              <td style="color:var(--text-secondary); font-size:0.85rem;">{{ log.details }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📜</div>
+      <p>Aucun événement enregistré pour le moment.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

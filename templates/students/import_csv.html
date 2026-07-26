@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📂 Import CSV</h1>
+    <div class="page-subtitle">Importer des étudiants en masse depuis un fichier CSV</div>
+  </div>
+  <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+</div>
+
+<div class="dashboard-grid" style="grid-template-columns:1fr 1fr; gap:20px;">
+
+  <div class="card">
+    <h3>📤 Importer un fichier CSV</h3>
+    <form method="post" enctype="multipart/form-data" style="margin-top:16px;">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Fichier CSV</label>
+        <input type="file" name="fichier_csv" accept=".csv" required style="padding:8px; border:1.5px solid var(--border); border-radius:8px; width:100%; background:var(--surface-strong); color:var(--text);">
+        <div class="form-help">Format accepté : .csv encodé UTF-8</div>
+      </div>
+      <button class="btn btn-primary w-full" type="submit">📂 Importer</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>📋 Format attendu</h3>
+    <p style="color:var(--text-secondary); font-size:0.9rem; margin:12px 0;">Le fichier CSV doit contenir les colonnes suivantes :</p>
+    <div class="table-container">
+      <table>
+        <thead><tr><th>Colonne</th><th>Obligatoire</th><th>Exemple</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Matricule</strong></td><td><span class="pill pill-danger">Oui</span></td><td>2024-001</td></tr>
+          <tr><td><strong>Nom</strong></td><td><span class="pill pill-danger">Oui</span></td><td>Dupont</td></tr>
+          <tr><td><strong>Prénom</strong></td><td><span class="pill pill-danger">Oui</span></td><td>Jean</td></tr>
+          <tr><td>Âge</td><td><span class="pill">Non</span></td><td>20</td></tr>
+          <tr><td>Filière</td><td><span class="pill">Non</span></td><td>INFO</td></tr>
+          <tr><td>Niveau</td><td><span class="pill">Non</span></td><td>L2</td></tr>
+          <tr><td>Email</td><td><span class="pill">Non</span></td><td>jean@email.com</td></tr>
+          <tr><td>Téléphone</td><td><span class="pill">Non</span></td><td>+237600000000</td></tr>
+          <tr><td>Statut</td><td><span class="pill">Non</span></td><td>Actif</td></tr>
+          <tr><td>Notes</td><td><span class="pill">Non</span></td><td>12,15,14</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:16px; padding:12px; background:var(--warning-light); border-radius:8px; font-size:0.85rem; color:var(--warning);">
+      ⚠️ Les étudiants avec un matricule déjà existant seront ignorés.
+    </div>
+  </div>
+</div>
+{% endblock %}

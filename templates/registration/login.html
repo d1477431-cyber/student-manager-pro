@@ -1,33 +1,52 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="login-shell">
-  <div class="card hero-panel">
-    <div class="hero-badge">✨ Nouveau design</div>
-    <h1>Gérez vos étudiants avec élégance</h1>
-    <p>Une interface moderne, claire et rapide pour suivre les inscriptions, notes et profils étudiants sans effort.</p>
+  <div class="card hero-panel" style="padding:42px;">
+    <div class="hero-badge">🎓 Student Manager PRO</div>
+    <h1>Bienvenue dans votre espace</h1>
+    <p>Connectez-vous pour accéder à la gestion complète de vos étudiants :<br>
+    📊 Tableau de bord · 👥 Gestion des inscrits · 💰 Suivi financier · 📈 Statistiques</p>
   </div>
 
-  <div class="card">
-    <div class="page-header" style="margin-bottom: 12px;">
-      <div>
-        <h2 class="page-title" style="font-size: 1.35rem;">Connexion</h2>
-        <div class="page-subtitle">Accédez à votre espace de gestion</div>
-      </div>
-    </div>
+  <div class="card" style="padding:36px;">
+    <h2 style="margin:0 0 8px; font-size:1.5rem;">🔐 Connexion</h2>
+    <p style="color:var(--muted); margin-bottom:24px;">Connectez-vous avec vos identifiants</p>
 
     <form method="post">
       {% csrf_token %}
       <div class="form-group">
-        <label for="username">Nom d'utilisateur</label>
-        <input type="text" id="username" name="username" required placeholder="Entrez votre identifiant">
+        <label for="username">Identifiant</label>
+        <input type="text" id="username" name="username" placeholder="Votre identifiant" required autofocus>
       </div>
       <div class="form-group">
         <label for="password">Mot de passe</label>
-        <input type="password" id="password" name="password" required placeholder="Entrez votre mot de passe">
+        <input type="password" id="password" name="password" placeholder="Votre mot de passe" required>
       </div>
-      <button class="button" type="submit">Se connecter</button>
+      <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size:1.05rem; margin-top:8px;">Se connecter</button>
     </form>
+
+    <p style="text-align:center; margin-top:20px; color:var(--muted); font-size:0.85rem;">
+      Student Manager PRO v2.1.0 — Application de gestion académique
+    </p>
+  </div>
+</div>
+
+<div class="login-footer" id="about" style="max-width:900px; margin:24px auto; display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+  <div class="card" style="padding:24px; text-align:center;">
+    <h3 style="margin:0 0 8px; font-size:1.1rem;">📌 À propos</h3>
+    <p style="color:var(--muted); font-size:0.9rem; margin:0;">
+      Student Manager PRO est une application web professionnelle de gestion académique développée avec <strong>Django 6</strong> et <strong>PostgreSQL</strong>. Elle permet la gestion complète des étudiants, des paiements, des absences, des notes et bien plus encore.
+    </p>
+  </div>
+  <div class="card" id="contact" style="padding:24px; text-align:center;">
+    <h3 style="margin:0 0 8px; font-size:1.1rem;">📬 Contact</h3>
+    <p style="color:var(--muted); font-size:0.9rem; margin:0;">
+      <strong>Email :</strong> contact@studentmanager-pro.com<br>
+      <strong>Tél :</strong> +228 9X XXX XXX<br>
+      <strong>Adresse :</strong> Lomé, Togo
+    </p>
   </div>
 </div>
 {% endblock %}

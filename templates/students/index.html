@@ -1,69 +1,328 @@
 {% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Tableau de bord{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Liste des étudiants</h1>
-    <div class="page-subtitle">Vue synthétique de votre base académique</div>
+    <h1 class="page-title">{% icon 'dashboard' %} Tableau de bord</h1>
+    <div class="page-subtitle">Vue d'ensemble de votre établissement</div>
   </div>
-  <a class="button" href="{% url 'add_student' %}">Ajouter un étudiant</a>
+  <div class="action-row">
+    <a class="btn btn-primary" href="{% url 'add_student' %}">{% icon 'add' %} Ajouter un étudiant</a>
+    <a class="btn btn-secondary" href="{% url 'export_students_csv' %}">{% icon 'download' %} CSV</a>
+    <a class="btn btn-secondary" href="{% url 'export_students_excel' %}">{% icon 'chart_bar' %} Excel</a>
+    <a class="btn btn-secondary" href="{% url 'import_csv' %}">{% icon 'import' %} Import CSV</a>
+    <a class="btn btn-secondary" href="{% url 'classement' %}">{% icon 'trophy' %} Classement</a>
+    <a class="btn btn-secondary" href="{% url 'stats_avancees' %}">{% icon 'trending' %} Statistiques</a>
+  </div>
+</div>
+
+<!-- ===== KPI : VUE D'ENSEMBLE ===== -->
+<div class="section-title">
+  {% icon 'graduation' 'w-5 h-5' %}
+  <span>Vue d'ensemble académique</span>
 </div>
 
 <div class="stats-grid">
   <div class="stat-card">
+    <div class="stat-icon">{% icon 'users' 'w-6 h-6' %}</div>
     <div class="label">Étudiants</div>
-    <strong>{{ students|length }}</strong>
+    <strong>{{ total_etudiants }}</strong>
   </div>
   <div class="stat-card">
+    <div class="stat-icon">{% icon 'check_circle' 'w-6 h-6' %}</div>
     <div class="label">Actifs</div>
-    <strong>{{ students|length }}</strong>
+    <strong>{{ actifs }}</strong>
   </div>
   <div class="stat-card">
-    <div class="label">À suivre</div>
-    <strong>0</strong>
+    <div class="stat-icon">{% icon 'x_circle' 'w-6 h-6' %}</div>
+    <div class="label">Suspendus</div>
+    <strong>{{ suspendus }}</strong>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">{% icon 'chart' 'w-6 h-6' %}</div>
+    <div class="label">Moyenne générale</div>
+    <strong>{{ moyenne_generale|floatformat:2 }}</strong>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">{% icon 'star' 'w-6 h-6' %}</div>
+    <div class="label">Meilleure moyenne</div>
+    <strong>{{ meilleure_moyenne|floatformat:2 }}</strong>
   </div>
 </div>
 
+<!-- ===== KPI : FINANCES ===== -->
+{% if can_view_finances %}
+<div class="section-title">
+  {% icon 'money' 'w-5 h-5' %}
+  <span>Aperçu financier</span>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card" style="border-left: 4px solid var(--primary);">
+    <div class="stat-icon">{% icon 'money' 'w-6 h-6' %}</div>
+    <div class="label">Total scolarité</div>
+    <strong>{{ total_scolarite|floatformat:0 }} FCFA</strong>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--success);">
+    <div class="stat-icon">{% icon 'check' 'w-6 h-6' %}</div>
+    <div class="label">Total encaissé</div>
+    <strong>{{ total_encaisse|floatformat:0 }} FCFA</strong>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--danger);">
+    <div class="stat-icon">{% icon 'debt' 'w-6 h-6' %}</div>
+    <div class="label">Dettes restantes</div>
+    <strong>{{ total_dettes|floatformat:0 }} FCFA</strong>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--success);">
+    <div class="stat-icon">{% icon 'check_circle' 'w-6 h-6' %}</div>
+    <div class="label">À jour</div>
+    <strong>{{ a_jour }}</strong>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--warning);">
+    <div class="stat-icon">{% icon 'alert' 'w-6 h-6' %}</div>
+    <div class="label">Partiel</div>
+    <strong>{{ partiel }}</strong>
+  </div>
+  <div class="stat-card" style="border-left: 4px solid var(--danger);">
+    <div class="stat-icon">{% icon 'error' 'w-6 h-6' %}</div>
+    <div class="label">En retard</div>
+    <strong>{{ en_retard }}</strong>
+  </div>
+</div>
+{% endif %}
+
+<!-- ===== ALERTES PAIEMENTS ===== -->
+{% if can_view_finances and alertes %}
+<div class="card" style="border-left: 4px solid var(--danger); margin-bottom:20px;">
+  <h3 style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">{% icon 'alert' 'w-5 h-5' %} Alertes paiements en retard</h3>
+  <div class="dashboard-list">
+    {% for s in alertes %}
+    <li>
+      <span>{{ s.nom }} {{ s.prenom }} ({{ s.matricule }})</span>
+      <strong style="color:var(--danger);">{{ s.solde_restant|floatformat:0 }} FCFA restants</strong>
+    </li>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ===== GRAPHIQUES ===== -->
+{% if chart_paiements or chart_impayes %}
+<div class="section-title">
+  {% icon 'trending' 'w-5 h-5' %}
+  <span>Analyses graphiques</span>
+</div>
+
+<div class="chart-grid">
+  {% if chart_paiements %}
+  <div class="chart-card chart-card-primary">
+    <div class="chart-card-header">
+      <div class="chart-card-title">
+        <span>Évolution des paiements</span>
+      </div>
+      <div class="chart-card-period">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        12 derniers mois
+      </div>
+    </div>
+    <div class="chart-card-body">
+      <img src="data:image/png;base64,{{ chart_paiements }}" alt="Évolution des paiements" class="chart-img">
+    </div>
+  </div>
+  {% endif %}
+  {% if chart_impayes %}
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div class="chart-card-title">
+        <span>Taux d'impayés</span>
+      </div>
+      <div class="chart-card-period">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 17 7 17 7"/>
+          <path d="M4 22h16"/><path d="M10 22V2h4v20"/>
+        </svg>
+        Par filière
+      </div>
+    </div>
+    <div class="chart-card-body">
+      <img src="data:image/png;base64,{{ chart_impayes }}" alt="Taux d'impayés par filière" class="chart-img">
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ===== RECHERCHE & LISTE DES ÉTUDIANTS ===== -->
+<div class="section-title">
+  {% icon 'list' 'w-5 h-5' %}
+  <span>Liste des étudiants</span>
+</div>
+
+<div class="card" style="margin-bottom:20px; padding:20px 24px;">
+  <form method="get">
+    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+      <div class="form-group">
+        <label for="q">{% icon 'search' 'w-4 h-4' %} Rechercher</label>
+        <input type="text" id="q" name="q" value="{{ query }}" placeholder="Nom, prénom ou matricule">
+      </div>
+      <div class="form-group">
+        <label for="statut">Statut</label>
+        <select id="statut" name="statut">
+          <option value="">Tous</option>
+          <option value="Actif" {% if statut_filter == 'Actif' %}selected{% endif %}>Actif</option>
+          <option value="Suspendu" {% if statut_filter == 'Suspendu' %}selected{% endif %}>Suspendu</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="paiement">Paiement</label>
+        <select id="paiement" name="paiement">
+          <option value="">Tous</option>
+          <option value="a_jour" {% if paiement_filter == 'a_jour' %}selected{% endif %}>À jour</option>
+          <option value="partiel" {% if paiement_filter == 'partiel' %}selected{% endif %}>Partiel</option>
+          <option value="en_retard" {% if paiement_filter == 'en_retard' %}selected{% endif %}>En retard</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="filiere">Filière</label>
+        <select id="filiere" name="filiere">
+          <option value="">Toutes</option>
+          {% for f in filieres %}
+            <option value="{{ f }}" {% if filiere_filter == f %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="niveau">Niveau</label>
+        <select id="niveau" name="niveau">
+          <option value="">Tous</option>
+          {% for n in niveaux %}
+            <option value="{{ n }}" {% if niveau_filter == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="display:flex; align-items:flex-end;">
+        <button class="btn btn-primary w-full" type="submit">{% icon 'filter' 'w-4 h-4' %} Filtrer</button>
+      </div>
+    </div>
+    {% if query or statut_filter or paiement_filter or filiere_filter or niveau_filter %}
+      <div style="margin-top:12px;">
+        <a class="btn btn-secondary btn-sm" href="{% url 'index' %}">{% icon 'close' 'w-4 h-4' %} Réinitialiser les filtres</a>
+      </div>
+    {% endif %}
+  </form>
+</div>
+
 <div class="card">
-  {% if students %}
-    <table>
-      <thead>
-        <tr>
-          <th>Matricule</th>
-          <th>Nom</th>
-          <th>Prénom</th>
-          <th>Filière</th>
-          <th>Niveau</th>
-          <th>Statut</th>
-          <th>Notes</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for student in students %}
+  <div class="card-header">
+    <div class="card-title">{% icon 'list' 'w-5 h-5' %} Liste des étudiants</div>
+    <span class="text-muted">{{ total_etudiants }} étudiant(s)</span>
+  </div>
+  {% if student_data %}
+    <div class="table-container">
+      <table>
+        <thead>
           <tr>
-            <td>{{ student.matricule }}</td>
-            <td>{{ student.nom }}</td>
-            <td>{{ student.prenom }}</td>
-            <td>{{ student.filiere|default:'-' }}</td>
-            <td>{{ student.niveau|default:'-' }}</td>
-            <td>{{ student.statut }}</td>
-            <td>{{ student.notes_list|join:', ' }}</td>
+            <th>Matricule</th>
+            <th>Étudiant</th>
+            <th>Filière</th>
+            <th>Niveau</th>
+            <th>Statut</th>
+            <th>Moyenne</th>
+            <th>Paiement</th>
+            <th>Solde</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in student_data %}
+          <tr>
+            <td><strong>{{ item.student.matricule }}</strong></td>
+            <td>
+              <div class="profile-chip">
+                <img src="{{ item.photo_url }}" alt="" class="avatar" style="object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="avatar" style="display:none;">{{ item.student.prenom|first|upper }}{{ item.student.nom|first|upper }}</div>
+                <div>
+                  <div style="font-weight:600;">{{ item.student.nom }}</div>
+                  <div style="font-size:0.8rem; color:var(--muted);">{{ item.student.prenom }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ item.student.filiere|default:'-' }}</td>
+            <td>{{ item.student.niveau|default:'-' }}</td>
+            <td>
+              <span class="pill {% if item.student.statut == 'Actif' %}pill-success{% else %}pill-danger{% endif %}">
+                {{ item.student.statut }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight:600;">{{ item.moyenne|floatformat:2 }}</div>
+              <div style="font-size:0.75rem; color:var(--muted);">{{ item.appreciation }}</div>
+            </td>
+            <td>
+              <span class="pill {% if item.statut_paiement == 'À jour' %}pill-success{% elif item.statut_paiement == 'Partiel' %}pill-warning{% else %}pill-danger{% endif %}">
+                {{ item.statut_paiement }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight:600;{% if item.solde > 0 %}color:var(--danger);{% else %}color:var(--success);{% endif %}">{{ item.solde|floatformat:0 }} F</div>
+            </td>
             <td>
               <div class="action-row" style="justify-content:flex-start;">
-                <a class="button button-secondary" href="{% url 'edit_student' student.matricule %}">Modifier</a>
-                <form method="post" action="{% url 'delete_student' student.matricule %}" style="margin:0;">
+                <a class="btn btn-secondary btn-sm" href="{% url 'bulletin_preview' item.student.matricule %}" title="Voir le bulletin">{% icon 'file_text' 'w-4 h-4' %}</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'carte_preview' item.student.matricule %}" title="Voir la carte">{% icon 'id_card' 'w-4 h-4' %}</a>
+                <a class="btn btn-secondary btn-sm" href="{% url 'edit_student' item.student.matricule %}">{% icon 'edit' 'w-4 h-4' %}</a>
+                <form method="post" action="{% url 'delete_student' item.student.matricule %}" style="margin:0;">
                   {% csrf_token %}
-                  <button class="button button-danger" type="submit">Supprimer</button>
+                  <button class="btn btn-danger btn-sm" type="submit">{% icon 'delete' 'w-4 h-4' %}</button>
                 </form>
               </div>
             </td>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
-    <p style="margin:0; color:var(--muted);">Aucun étudiant enregistré.</p>
+    <div class="empty-state">
+      <div class="empty-icon">{% icon 'users' 'w-12 h-12' %}</div>
+      <p>Aucun étudiant trouvé.</p>
+    </div>
   {% endif %}
 </div>
+
+<!-- Pagination -->
+{% if students.has_other_pages %}
+<div class="pagination">
+    <span class="step-links">
+        {% if students.has_previous %}
+            <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if paiement_filter %}&paiement={{ paiement_filter }}{% endif %}{% if filiere_filter %}&filiere={{ filiere_filter }}{% endif %}{% if niveau_filter %}&niveau={{ niveau_filter }}{% endif %}">&laquo;</a>
+            <a href="?page={{ students.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if paiement_filter %}&paiement={{ paiement_filter }}{% endif %}{% if filiere_filter %}&filiere={{ filiere_filter }}{% endif %}{% if niveau_filter %}&niveau={{ niveau_filter }}{% endif %}">‹</a>
+        {% else %}
+            <span class="disabled">&laquo;</span>
+            <span class="disabled">‹</span>
+        {% endif %}
+        
+        {% for i in students.paginator.page_range %}
+            {% if students.number == i %}
+                <span class="current">{{ i }}</span>
+            {% elif i > students.number|add:'-3' and i < students.number|add:'3' %}
+                <a href="?page={{ i }}{% if query %}&q={{ query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if paiement_filter %}&paiement={{ paiement_filter }}{% endif %}{% if filiere_filter %}&filiere={{ filiere_filter }}{% endif %}{% if niveau_filter %}&niveau={{ niveau_filter }}{% endif %}">{{ i }}</a>
+            {% endif %}
+        {% endfor %}
+        
+        {% if students.has_next %}
+            <a href="?page={{ students.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if paiement_filter %}&paiement={{ paiement_filter }}{% endif %}{% if filiere_filter %}&filiere={{ filiere_filter }}{% endif %}{% if niveau_filter %}&niveau={{ niveau_filter }}{% endif %}">›</a>
+            <a href="?page={{ students.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if statut_filter %}&statut={{ statut_filter }}{% endif %}{% if paiement_filter %}&paiement={{ paiement_filter }}{% endif %}{% if filiere_filter %}&filiere={{ filiere_filter }}{% endif %}{% if niveau_filter %}&niveau={{ niveau_filter }}{% endif %}">&raquo;</a>
+        {% else %}
+            <span class="disabled">›</span>
+            <span class="disabled">&raquo;</span>
+        {% endif %}
+    </span>
+</div>
+{% endif %}
 {% endblock %}

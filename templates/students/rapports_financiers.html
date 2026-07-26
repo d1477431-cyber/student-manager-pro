@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+{% block title %}Rapports Financiers - Student Manager{% endblock %}
+{% block page_title %}Rapports Financiers{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{% icon 'money' 'w-6 h-6' %} Rapports Financiers</h1>
+        <p class="page-subtitle">Analyse détaillée des finances de l'établissement</p>
+    </div>
+    <div class="action-row">
+        <a class="btn btn-secondary" href="{% url 'paiements' %}">{% icon 'payment' 'w-4 h-4' %} Gérer les paiements</a>
+    </div>
+</div>
+
+<!-- Cartes KPI financières -->
+<div class="stats-grid">
+    <div class="stat-card" style="border-left: 4px solid var(--primary);">
+        <div class="stat-icon">{% icon 'money' 'w-6 h-6' %}</div>
+        <div class="label">Total Scolarité</div>
+        <strong>{{ total_scolarite|floatformat:0 }} FCFA</strong>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid var(--success);">
+        <div class="stat-icon">{% icon 'check' 'w-6 h-6' %}</div>
+        <div class="label">Total Encaissé</div>
+        <strong>{{ total_encaisse|floatformat:0 }} FCFA</strong>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid var(--danger);">
+        <div class="stat-icon">{% icon 'debt' 'w-6 h-6' %}</div>
+        <div class="label">Dettes Restantes</div>
+        <strong>{{ total_dettes|floatformat:0 }} FCFA</strong>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid var(--success);">
+        <div class="stat-icon">{% icon 'check_circle' 'w-6 h-6' %}</div>
+        <div class="label">À jour</div>
+        <strong>{{ a_jour }}</strong>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid var(--warning);">
+        <div class="stat-icon">{% icon 'alert' 'w-6 h-6' %}</div>
+        <div class="label">Partiel</div>
+        <strong>{{ partiel }}</strong>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid var(--danger);">
+        <div class="stat-icon">{% icon 'error' 'w-6 h-6' %}</div>
+        <div class="label">En retard</div>
+        <strong>{{ en_retard }}</strong>
+    </div>
+</div>
+
+<!-- Alertes -->
+{% if alertes %}
+<div class="card" style="border-left: 4px solid var(--danger); margin-bottom:24px;">
+    <h3 style="display:flex; align-items:center; gap:8px; margin-bottom:12px; color:var(--danger);">
+        {% icon 'alert' 'w-5 h-5' %} Alertes paiements en retard
+    </h3>
+    <div class="dashboard-list">
+        {% for s in alertes %}
+        <li>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="avatar" style="width:32px;height:32px;font-size:0.75rem;background:var(--danger-light);color:var(--danger);">
+                    {{ s.prenom|first|upper }}{{ s.nom|first|upper }}
+                </div>
+                <div>
+                    <div style="font-weight:600;">{{ s.nom }} {{ s.prenom }}</div>
+                    <div style="font-size:0.75rem;color:var(--muted);">{{ s.matricule }} · {{ s.filiere|default:'-' }}</div>
+                </div>
+            </div>
+            <strong style="color:var(--danger);">{{ s.solde_restant|floatformat:0 }} FCFA</strong>
+        </li>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Graphiques financiers -->
+{% if matplotlib_available and charts %}
+<div class="section-title">
+    {% icon 'trending' 'w-5 h-5' %}
+    <span>Analyses graphiques financières</span>
+</div>
+
+<div class="dashboard-grid">
+    {% if charts.paiements %}
+    <div class="card dashboard-card" style="grid-column: 1 / -1;">
+        <h3>{% icon 'trending' 'w-5 h-5' %} Évolution des paiements (12 mois)</h3>
+        <img src="data:image/png;base64,{{ charts.paiements }}" alt="Évolution des paiements" style="width:100%;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.encaissements %}
+    <div class="card dashboard-card">
+        <h3>{% icon 'chart_bar' 'w-5 h-5' %} Encaissements par mois</h3>
+        <img src="data:image/png;base64,{{ charts.encaissements }}" alt="Encaissements mensuels" style="width:100%;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.impayes %}
+    <div class="card dashboard-card">
+        <h3>{% icon 'debt' 'w-5 h-5' %} Taux d'impayés par filière</h3>
+        <img src="data:image/png;base64,{{ charts.impayes }}" alt="Taux d'impayés" style="width:100%;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.statuts_paiement %}
+    <div class="card dashboard-card">
+        <h3>{% icon 'check_circle' 'w-5 h-5' %} Répartition des statuts de paiement</h3>
+        <img src="data:image/png;base64,{{ charts.statuts_paiement }}" alt="Statuts de paiement" style="width:100%;max-width:450px;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+
+    {% if charts.montants_filieres %}
+    <div class="card dashboard-card" style="grid-column: 1 / -1;">
+        <h3>{% icon 'money' 'w-5 h-5' %} Montants par filière (Scolarité vs Encaissé)</h3>
+        <img src="data:image/png;base64,{{ charts.montants_filieres }}" alt="Montants par filière" style="width:100%;display:block;margin:0 auto;">
+    </div>
+    {% endif %}
+</div>
+{% elif not matplotlib_available %}
+<div class="card" style="text-align:center;padding:40px;">
+    <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">{% icon 'database' 'w-12 h-12' %}</div>
+    <h3>Matplotlib non installé</h3>
+    <p class="text-muted" style="margin-top:8px;">Installez matplotlib pour voir les graphiques : <code>pip install matplotlib</code></p>
+</div>
+{% endif %}
+{% endblock %}

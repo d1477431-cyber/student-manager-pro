@@ -3,18 +3,90 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Modifier {{ student.nom }} {{ student.prenom }}</h1>
-    <div class="page-subtitle">Mettez à jour les informations de l'étudiant</div>
+    <h1 class="page-title">✏️ Modifier un étudiant</h1>
+    <div class="page-subtitle">Modifiez les informations de {{ student.prenom }} {{ student.nom }}</div>
+  </div>
+  <div class="action-row">
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour à la liste</a>
   </div>
 </div>
 
 <div class="card">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
-    {{ form.as_p }}
-    <div class="action-row" style="margin-top: 12px;">
-      <button class="button" type="submit">Enregistrer</button>
-      <a class="button button-secondary" href="{% url 'index' %}">Retour</a>
+    
+    <div class="form-grid">
+      <div>
+        <div class="form-group">
+          <label for="{{ form.matricule.id_for_label }}">Matricule</label>
+          {{ form.matricule }}
+          <div class="form-help">Le matricule ne peut pas être modifié.</div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.nom.id_for_label }}">Nom</label>
+          {{ form.nom }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.prenom.id_for_label }}">Prénom</label>
+          {{ form.prenom }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.age.id_for_label }}">Âge</label>
+          {{ form.age }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.email.id_for_label }}">Email</label>
+          {{ form.email }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.telephone.id_for_label }}">Téléphone</label>
+          {{ form.telephone }}
+        </div>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="{{ form.filiere.id_for_label }}">Filière</label>
+          {{ form.filiere }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.niveau.id_for_label }}">Niveau</label>
+          {{ form.niveau }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.statut.id_for_label }}">Statut</label>
+          {{ form.statut }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.frais_scolarite.id_for_label }}">Frais de scolarité (FCFA)</label>
+          {{ form.frais_scolarite }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.note_str.id_for_label }}">Notes (séparées par des virgules)</label>
+          {{ form.note_str }}
+          <div class="form-help">
+            Notes actuelles : 
+            {% if student.note %}
+              {{ student.note }}
+            {% else %}
+              Aucune note
+            {% endif %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.photo.id_for_label }}">Photo</label>
+          {{ form.photo }}
+          {% if student.photo %}
+            <div style="margin-top:8px;">
+              <img src="{{ student.photo.url }}" alt="Photo actuelle" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--border);">
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row" style="margin-top:20px; justify-content:flex-end;">
+      <a class="btn btn-secondary" href="{% url 'index' %}">Annuler</a>
+      <button class="btn btn-primary btn-lg" type="submit">💾 Enregistrer les modifications</button>
     </div>
   </form>
 </div>

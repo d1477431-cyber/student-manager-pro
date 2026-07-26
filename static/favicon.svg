@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5DCAA5"/>
+      <stop offset="100%" stop-color="#3DAF8A"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Toque de graduation -->
+  <path d="M16 5L4 12l12 7 12-7-12-7z" fill="#FFFFFF" opacity="0.95"/>
+  <path d="M4 12v5c0 1.1 2.7 2 6 2s6-.9 6-2v-5" fill="none" stroke="#04342C" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Pompon -->
+  <path d="M16 12l-2 8c0 1.5 1 2.5 2 3 1-.5 2-1.5 2-3l-2-8z" fill="#F59E0B" opacity="0.9"/>
+  <circle cx="16" cy="23" r="1.5" fill="#F59E0B"/>
+  <!-- Ligne de finition -->
+  <path d="M10 14.5c2 1 4 1.5 6 1.5s4-.5 6-1.5" fill="none" stroke="#04342C" stroke-width="0.8" stroke-linecap="round" opacity="0.5"/>
+</svg>

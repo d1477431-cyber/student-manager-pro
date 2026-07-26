@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">✉️ Messagerie Interne</h1>
+    <div class="page-subtitle">Communication entre membres du personnel</div>
+  </div>
+  <div class="action-row">
+    {% if non_lus > 0 %}<span class="pill pill-danger">{{ non_lus }} non lu(s)</span>{% endif %}
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+<div class="dashboard-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px;">
+
+  <!-- Nouveau message -->
+  <div class="card">
+    <h3>📤 Nouveau message</h3>
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Destinataire</label>
+        <select name="destinataire" required>
+          <option value="">Sélectionner...</option>
+          {% for u in utilisateurs %}<option value="{{ u.username }}">{{ u.username }} ({{ u.role }})</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Sujet</label>
+        <input type="text" name="sujet" required placeholder="Objet du message">
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea name="contenu" required rows="5" placeholder="Votre message..."></textarea>
+      </div>
+      <button class="btn btn-primary w-full" type="submit">📤 Envoyer</button>
+    </form>
+  </div>
+
+  <!-- Messages reçus -->
+  <div class="card">
+    <h3>📥 Messages reçus</h3>
+    {% if messages_recus %}
+    <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+      {% for msg in messages_recus %}
+      <a href="{% url 'lire_message' msg.id %}" style="text-decoration:none;">
+        <div style="padding:12px; border-radius:8px; border:1px solid var(--border); background:{% if not msg.lu %}var(--info-light){% else %}var(--surface){% endif %}; transition:all 0.2s;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:var(--text);">{{ msg.expediteur.username }}</strong>
+            <small style="color:var(--muted);">{{ msg.date_envoi|date:"d/m/Y H:i" }}</small>
+          </div>
+          <div style="color:var(--text-secondary); font-size:0.85rem; margin-top:4px;">
+            {% if not msg.lu %}<span class="pill pill-info" style="font-size:0.7rem; padding:2px 6px;">Nouveau</span>{% endif %}
+            {{ msg.sujet }}
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">📭</div><p>Aucun message reçu.</p></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Messages envoyés -->
+<div class="card" style="margin-top:20px;">
+  <h3>📤 Messages envoyés</h3>
+  {% if messages_envoyes %}
+  <div class="table-container" style="margin-top:12px;">
+    <table>
+      <thead><tr><th>À</th><th>Sujet</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for msg in messages_envoyes %}
+        <tr>
+          <td><strong>{{ msg.destinataire.username }}</strong></td>
+          <td>{{ msg.sujet }}</td>
+          <td>{{ msg.date_envoi|date:"d/m/Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📤</div><p>Aucun message envoyé.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

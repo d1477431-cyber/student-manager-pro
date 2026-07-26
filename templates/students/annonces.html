@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+{% load static icon_tags %}
+
+{% block page_title %}Annonces{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{% icon 'bell' 'w-6 h-6' %} Annonces</h1>
+    <div class="page-subtitle">Publications et communications internes</div>
+  </div>
+  <div class="action-row">
+    {% if user.role == 'Admin' or user.role == 'Secrétaire' %}
+    <button class="btn btn-primary" onclick="document.getElementById('modalAjout').classList.add('show')">
+      {% icon 'add' 'w-4 h-4' %} Publier une annonce
+    </button>
+    {% endif %}
+    <a class="btn btn-secondary" href="{% url 'index' %}">← Retour</a>
+  </div>
+</div>
+
+<!-- Filtres par catégorie -->
+<div class="card" style="margin-bottom:20px; padding:16px 20px;">
+  <form method="get">
+    <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items:end;">
+      <div class="form-group">
+        <label>Catégorie</label>
+        <select name="categorie">
+          <option value="">Toutes les catégories</option>
+          <option value="info" {% if categorie_filter == 'info' %}selected{% endif %}>Information</option>
+          <option value="academique" {% if categorie_filter == 'academique' %}selected{% endif %}>Académique</option>
+          <option value="evenement" {% if categorie_filter == 'evenement' %}selected{% endif %}>Événement</option>
+          <option value="urgence" {% if categorie_filter == 'urgence' %}selected{% endif %}>Urgence</option>
+          <option value="administratif" {% if categorie_filter == 'administratif' %}selected{% endif %}>Administratif</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Rechercher</label>
+        <input type="text" name="q" value="{{ query }}" placeholder="Titre ou contenu...">
+      </div>
+      <div class="form-group" style="display:flex; gap:8px;">
+        <button class="btn btn-primary" type="submit">{% icon 'filter' 'w-4 h-4' %} Filtrer</button>
+        {% if query or categorie_filter %}
+        <a class="btn btn-secondary" href="{% url 'annonces' %}">{% icon 'close' 'w-4 h-4' %} Réinitialiser</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Liste des annonces -->
+{% if annonces %}
+<div style="display:flex; flex-direction:column; gap:16px;">
+  {% for annonce in annonces %}
+  <div class="card annonce-card" style="border-left: 4px solid 
+    {% if annonce.categorie == 'urgence' %}var(--danger)
+    {% elif annonce.categorie == 'evenement' %}var(--warning)
+    {% elif annonce.categorie == 'academique' %}var(--primary)
+    {% elif annonce.categorie == 'administratif' %}var(--info)
+    {% else %}var(--success){% endif %};">
+    
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <div style="flex:1;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+          <span class="pill 
+            {% if annonce.categorie == 'urgence' %}pill-danger
+            {% elif annonce.categorie == 'evenement' %}pill-warning
+            {% elif annonce.categorie == 'academique' %}pill-info
+            {% elif annonce.categorie == 'administratif' %}pill-info
+            {% else %}pill-success{% endif %}">
+            {{ annonce.get_categorie_display }}
+          </span>
+          <small style="color:var(--muted);">
+            {% icon 'clock' 'w-3 h-3' %} {{ annonce.date_publication|date:"d/m/Y H:i" }}
+          </small>
+          <small style="color:var(--muted);">
+            {% icon 'user' 'w-3 h-3' %} {{ annonce.auteur.username }}
+          </small>
+        </div>
+        <h3 style="margin:0 0 8px 0; font-size:1.1rem; color:var(--text);">{{ annonce.titre }}</h3>
+        <div style="color:var(--text-secondary); line-height:1.6; white-space:pre-wrap;">{{ annonce.contenu }}</div>
+        
+        {% if annonce.fichier_joint %}
+        <div style="margin-top:12px;">
+          <a href="{{ annonce.fichier_joint.url }}" class="btn btn-secondary btn-sm" target="_blank">
+            {% icon 'download' 'w-4 h-4' %} Télécharger le fichier joint
+          </a>
+        </div>
+        {% endif %}
+      </div>
+      
+      {% if user.role == 'Admin' or annonce.auteur == request.user %}
+      <div style="display:flex; gap:4px; flex-shrink:0;">
+        <form method="post" action="{% url 'supprimer_annonce' annonce.id %}" style="margin:0;" onsubmit="return confirm('Supprimer cette annonce ?')">
+          {% csrf_token %}
+          <button class="btn btn-danger btn-sm" type="submit" title="Supprimer">{% icon 'delete' 'w-4 h-4' %}</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div class="empty-icon">{% icon 'bell' 'w-12 h-12' %}</div>
+  <p>Aucune annonce pour le moment.</p>
+</div>
+{% endif %}
+
+<!-- Modal d'ajout d'annonce -->
+{% if user.role == 'Admin' or user.role == 'Secrétaire' %}
+<div class="modal-overlay" id="modalAjout">
+  <div class="modal" style="max-width:600px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">{% icon 'add' 'w-5 h-5' %} Nouvelle annonce</h3>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('modalAjout').classList.remove('show')">✕</button>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Titre</label>
+        <input type="text" name="titre" required placeholder="Titre de l'annonce">
+      </div>
+      <div class="form-group">
+        <label>Catégorie</label>
+        <select name="categorie" required>
+          <option value="info">Information</option>
+          <option value="academique">Académique</option>
+          <option value="evenement">Événement</option>
+          <option value="urgence">Urgence</option>
+          <option value="administratif">Administratif</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Contenu</label>
+        <textarea name="contenu" required rows="6" placeholder="Contenu de l'annonce..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Fichier joint (optionnel)</label>
+        <input type="file" name="fichier_joint">
+      </div>
+      <div class="action-row" style="margin-top:16px;">
+        <button class="btn btn-secondary" type="button" onclick="document.getElementById('modalAjout').classList.remove('show')">Annuler</button>
+        <button class="btn btn-primary" type="submit">{% icon 'send' 'w-4 h-4' %} Publier</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<style>
+.modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:var(--surface); border-radius:12px; padding:24px; width:90%; max-width:600px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.annonce-card { transition:transform 0.2s, box-shadow 0.2s; }
+.annonce-card:hover { transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,0.1); }
+</style>
+
+<script>
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+  });
+});
+</script>
+{% endblock %}

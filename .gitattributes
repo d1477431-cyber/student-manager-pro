@@ -1,3 +1,0 @@
-dist_tmp/*.exe filter=lfs diff=lfs merge=lfs -text
-dist/*.exe filter=lfs diff=lfs merge=lfs -text
-build*/**/*.pkg filter=lfs diff=lfs merge=lfs -text

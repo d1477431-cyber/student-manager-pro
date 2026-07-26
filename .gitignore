@@ -1,11 +1,43 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
+env/
+
+# Base de données locale
+etudiants.db
+etudiants.json
+
+# Variables d'environnement
+.env
+.env.local
+
+# Médias uploadés (photos)
+media/
+photos/
+
+# Build
 dist/
 build/
 *.spec
-etudiants.db
-etudiants.json
-photos/
+
+# Tests
+.htmlcov/
+.coverage
+coverage/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/*.log
+
+# Temporaire
 temp/
+*.tmp
