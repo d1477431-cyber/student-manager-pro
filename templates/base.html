@@ -347,6 +347,13 @@
 
     <div class="toast-container" id="toastContainer"></div>
 
+    {% if user.is_authenticated %}
+    <!-- ===== BOUTON DÉCONNEXION FLOTTANT MOBILE ===== -->
+    <a href="{% url 'logout' %}" class="mobile-logout-fab" title="Déconnexion">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/></svg>
+    </a>
+    {% endif %}
+
     <script>
         (function() {
             // === Sidebar toggle (mobile) ===

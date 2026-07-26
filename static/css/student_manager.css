@@ -3636,4 +3636,39 @@ tbody tr:hover {
         width: 16px;
         height: 16px;
     }
+    
+    /* Bouton déconnexion flottant pour mobile */
+    .mobile-logout-fab {
+        display: flex !important;
+    }
+}
+
+/* ===== BOUTON DÉCONNEXION FLOTTANT MOBILE ===== */
+.mobile-logout-fab {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 350;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.mobile-logout-fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5);
+}
+
+.mobile-logout-fab:active {
+    transform: scale(0.95);
 }
