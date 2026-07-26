@@ -14,6 +14,7 @@ from django.db.models import Q, Sum, Count, Avg
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from .forms import StudentForm, ChangePasswordForm
 from .logic import calculate_average, get_appreciation, parse_notes
@@ -58,6 +59,7 @@ def _authenticate_fallback(username, password):
     return authenticate(username=username, password=password)
 
 
+@csrf_exempt
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('index')
