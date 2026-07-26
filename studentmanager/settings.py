@@ -20,6 +20,14 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me')
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Ajouter automatiquement les domaines Railway pour le health check
+ALLOWED_HOSTS += ['healthcheck.railway.app', '.railway.app']
+
+# Ajouter le domaine public Railway si disponible
+railway_public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+if railway_public_domain:
+    ALLOWED_HOSTS.append(railway_public_domain)
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
