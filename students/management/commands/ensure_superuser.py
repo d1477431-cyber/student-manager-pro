@@ -1,16 +1,19 @@
+import os
+
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
 User = get_user_model()
 
+
 class Command(BaseCommand):
-    help = "Crée le superutilisateur par défaut s'il n'existe pas"
+    help = "Crée ou réinitialise le superutilisateur par défaut (dodo/dodo, surchargeable via env)"
 
     def handle(self, *args, **options):
-        username = 'dodo'
-        password = 'dodo'
-        
+        username = os.getenv('DJANGO_SUPERUSER_USERNAME', 'dodo')
+        password = os.getenv('DJANGO_SUPERUSER_PASSWORD', 'dodo')
+
         if not User.objects.filter(username=username).exists():
             User.objects.create(
                 username=username,

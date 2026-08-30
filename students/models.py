@@ -2,9 +2,15 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.hashers import make_password
+from django.core.validators import FileExtensionValidator
 from decimal import Decimal
 import json
 import datetime
+
+# Extensions autorisées pour les pièces jointes d'annonces : uniquement des formats
+# non exécutables et non interprétables par un navigateur (pas de .html/.svg/.js)
+# afin d'éviter le stockage/service de contenu pouvant déclencher du XSS stocké.
+ALLOWED_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif']
 
 # Modèle pour les utilisateurs (étend le modèle User de Django)
 class CustomUser(AbstractUser):
@@ -333,7 +339,10 @@ class Annonce(models.Model):
     categorie = models.CharField(max_length=20, choices=CATEGORIE_CHOICES, default='info')
     date_publication = models.DateTimeField(default=timezone.now)
     est_publiee = models.BooleanField(default=True)
-    fichier_joint = models.FileField(upload_to='annonces/', blank=True, null=True)
+    fichier_joint = models.FileField(
+        upload_to='annonces/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS)],
+    )
 
     class Meta:
         ordering = ['-date_publication']

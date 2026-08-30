@@ -39,3 +39,15 @@ def get_appreciation(moyenne):
     if moyenne >= 10:
         return 'Passable'
     return 'À renforcer'
+
+
+def sanitize_cell(value):
+    """Neutralise l'injection de formule CSV/Excel (CWE-1236).
+
+    Si la valeur est une chaîne commençant par un caractère qu'Excel/LibreOffice
+    interprète comme un début de formule (=, +, -, @, tabulation, retour chariot),
+    on la préfixe d'une apostrophe pour forcer son interprétation en texte brut.
+    """
+    if isinstance(value, str) and value[:1] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + value
+    return value

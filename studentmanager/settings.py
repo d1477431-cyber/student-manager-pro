@@ -17,8 +17,15 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-me')
-DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
+DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
+if not DEBUG and SECRET_KEY == 'django-insecure-change-me':
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY doit être défini via une variable d'environnement en production "
+        "(DEBUG=False). Générez-en une avec `python -c \"from django.core.management.utils "
+        "import get_random_secret_key; print(get_random_secret_key())\"`."
+    )
 
 # Ajouter automatiquement les domaines Railway pour le health check
 ALLOWED_HOSTS += ['healthcheck.railway.app', '.railway.app']
@@ -45,7 +52,6 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'students.middleware.DynamicCSRFMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -104,9 +110,6 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 AUTH_USER_MODEL = 'students.CustomUser'
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
-
-# Ajouter le domaine exact de production pour CSRF
-CSRF_TRUSTED_ORIGINS += ['https://*.railway.app', 'https://*.up.railway.app']
 
 # Ajouter le domaine public Railway si disponible
 if railway_public_domain:

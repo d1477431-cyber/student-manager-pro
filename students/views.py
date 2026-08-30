@@ -14,11 +14,13 @@ from django.db.models import Q, Sum, Count, Avg
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 
 from .forms import StudentForm, ChangePasswordForm
-from .logic import calculate_average, get_appreciation, parse_notes
-from .models import Student, CustomUser, Log, Payment, Echeance, Absence, Cours, Message, Note, Annonce, Notification
+from .logic import calculate_average, get_appreciation, parse_notes, sanitize_cell
+from .models import (
+    Student, CustomUser, Log, Payment, Echeance, Absence, Cours, Message, Note,
+    Annonce, Notification, ALLOWED_ATTACHMENT_EXTENSIONS,
+)
 
 try:
     import openpyxl
@@ -59,7 +61,6 @@ def _authenticate_fallback(username, password):
     return authenticate(username=username, password=password)
 
 
-@csrf_exempt
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -202,11 +203,11 @@ def export_students_csv(request):
         notes_list = [float(n.valeur) for n in s.notes.all()]
         notes_str = ', '.join(str(round(n, 2)) for n in notes_list)
         moyenne = calculate_average(notes_list)
-        writer.writerow([
+        writer.writerow([sanitize_cell(v) for v in [
             s.matricule, s.nom, s.prenom, s.filiere or '-', s.niveau or '-', s.statut,
             notes_str, round(moyenne, 2), get_appreciation(moyenne),
             float(s.frais_scolarite), float(s.total_paye()), float(s.solde_restant()), s.statut_paiement()
-        ])
+        ]])
     return response
 
 
@@ -242,9 +243,11 @@ def export_students_excel(request):
     for row_idx, s in enumerate(students, 2):
         notes_list = [float(n.valeur) for n in s.notes.all()]
         moyenne = calculate_average(notes_list)
-        data = [s.matricule, s.nom, s.prenom, s.filiere or '-', s.niveau or '-', s.statut,
-                round(moyenne, 2), get_appreciation(moyenne),
-                float(s.frais_scolarite), float(s.total_paye()), float(s.solde_restant()), s.statut_paiement()]
+        data = [sanitize_cell(v) for v in [
+            s.matricule, s.nom, s.prenom, s.filiere or '-', s.niveau or '-', s.statut,
+            round(moyenne, 2), get_appreciation(moyenne),
+            float(s.frais_scolarite), float(s.total_paye()), float(s.solde_restant()), s.statut_paiement()
+        ]]
         for col, val in enumerate(data, 1):
             cell = ws.cell(row=row_idx, column=col, value=val)
             cell.border = thin_border
@@ -850,6 +853,16 @@ def annonces_view(request):
         contenu = request.POST.get('contenu', '').strip()
         categorie = request.POST.get('categorie', 'info')
         fichier_joint = request.FILES.get('fichier_joint')
+
+        if fichier_joint:
+            extension = fichier_joint.name.rsplit('.', 1)[-1].lower() if '.' in fichier_joint.name else ''
+            if extension not in ALLOWED_ATTACHMENT_EXTENSIONS:
+                messages.error(
+                    request,
+                    f"❌ Type de fichier non autorisé. Formats acceptés : "
+                    f"{', '.join(ALLOWED_ATTACHMENT_EXTENSIONS)}."
+                )
+                return redirect('annonces')
 
         if titre and contenu:
             Annonce.objects.create(

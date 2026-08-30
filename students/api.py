@@ -14,6 +14,43 @@ from datetime import timedelta
 from .models import Student, CustomUser, Payment, Echeance, Absence, Cours, Message, Note, Log
 
 
+# ===== PERMISSIONS =====
+# L'API doit refléter les mêmes règles d'autorisation que les vues Django
+# (@permission_required), pas seulement exiger une authentification.
+
+class IsAuthenticatedRole(permissions.BasePermission):
+    """Base : utilisateur authentifié (équivalent de @login_required)."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated)
+
+
+class StudentAPIPermission(IsAuthenticatedRole):
+    """Comme les vues web : tout utilisateur connecté peut lire/créer/modifier,
+    mais seul un rôle avec can_delete_student peut supprimer un étudiant."""
+
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        if request.method == 'DELETE':
+            return request.user.has_permission('can_delete_student')
+        return True
+
+
+class CanViewFinances(IsAuthenticatedRole):
+    """Réservé aux rôles ayant can_view_finances (paiements, échéances)."""
+
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.has_permission('can_view_finances')
+
+
+class CanManageUsers(IsAuthenticatedRole):
+    """Réservé aux rôles ayant can_manage_users (gestion des utilisateurs)."""
+
+    def has_permission(self, request, view):
+        return super().has_permission(request, view) and request.user.has_permission('can_manage_users')
+
+
 # ===== SERIALIZERS =====
 
 class NoteSerializer(serializers.ModelSerializer):
@@ -169,7 +206,7 @@ class StandardPagination(PageNumberPagination):
 class StudentViewSet(viewsets.ModelViewSet):
     """API CRUD pour les étudiants"""
     queryset = Student.objects.all().prefetch_related('notes')
-    permission_classes = [IsAuthenticated]
+    permission_classes = [StudentAPIPermission]
     pagination_class = StandardPagination
     lookup_field = 'matricule'
 
@@ -203,7 +240,7 @@ class PaymentViewSet(viewsets.ReadOnlyModelViewSet):
     """API lecture seule pour les paiements"""
     queryset = Payment.objects.all().select_related('student').order_by('-date_paiement')
     serializer_class = PaymentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewFinances]
     pagination_class = StandardPagination
 
 
@@ -211,7 +248,7 @@ class EcheanceViewSet(viewsets.ReadOnlyModelViewSet):
     """API lecture seule pour les échéances"""
     queryset = Echeance.objects.all().select_related('student').order_by('date_echeance')
     serializer_class = EcheanceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewFinances]
 
 
 class AbsenceViewSet(viewsets.ModelViewSet):
@@ -232,7 +269,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     """API lecture seule pour les utilisateurs"""
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanManageUsers]
 
 
 # ===== VUES FONCTIONS =====
