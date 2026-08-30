@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load icon_tags %}
+
+{% block content %}
+<div class="login-shell">
+  <div class="card hero-panel" style="padding:42px;">
+    <div class="hero-badge">🎓 Student Manager PRO</div>
+    <h1>Rejoignez l'équipe pédagogique</h1>
+    <p>Créez votre compte Professeur.<br>
+    ⏳ Un administrateur devra approuver votre inscription avant que vous puissiez vous connecter.</p>
+  </div>
+
+  <div class="card" style="padding:36px;">
+    <h2 style="margin:0 0 8px; font-size:1.5rem;">📝 Inscription Professeur</h2>
+    <p style="color:var(--muted); margin-bottom:24px;">Votre compte sera activé après validation par l'administrateur</p>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" style="margin-bottom:16px; padding:12px 16px; border-radius:8px; background:var(--surface-strong); border-left:3px solid var(--success);">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="form-help" style="color:var(--danger); margin-bottom:12px;">{{ form.non_field_errors|striptags }}</div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="{{ form.username.id_for_label }}">Identifiant</label>
+        {{ form.username }}
+        {% if form.username.errors %}<div class="form-help" style="color:var(--danger);">{{ form.username.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+        <div class="form-group">
+          <label for="{{ form.first_name.id_for_label }}">Prénom</label>
+          {{ form.first_name }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.last_name.id_for_label }}">Nom</label>
+          {{ form.last_name }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.email.id_for_label }}">Email</label>
+        {{ form.email }}
+        {% if form.email.errors %}<div class="form-help" style="color:var(--danger);">{{ form.email.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.password.id_for_label }}">Mot de passe</label>
+        <div class="password-field">
+          {{ form.password }}
+          <button type="button" class="password-toggle" id="toggleRegPassword" aria-pressed="false" aria-label="Afficher le mot de passe">
+            <span class="icon-show">{% icon 'eye' %}</span>
+            <span class="icon-hide" hidden>{% icon 'eye_off' %}</span>
+          </button>
+        </div>
+        {% if form.password.errors %}<div class="form-help" style="color:var(--danger);">{{ form.password.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="{{ form.confirm_password.id_for_label }}">Confirmer le mot de passe</label>
+        {{ form.confirm_password }}
+        {% if form.confirm_password.errors %}<div class="form-help" style="color:var(--danger);">{{ form.confirm_password.errors|striptags }}</div>{% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size:1.05rem; margin-top:8px;">Envoyer ma demande d'inscription</button>
+    </form>
+
+    <script>
+      (function () {
+        var toggle = document.getElementById('toggleRegPassword');
+        var input = document.getElementById('{{ form.password.id_for_label }}');
+        if (!toggle || !input) return;
+        var showIcon = toggle.querySelector('.icon-show');
+        var hideIcon = toggle.querySelector('.icon-hide');
+        toggle.addEventListener('click', function () {
+          var reveal = input.type === 'password';
+          input.type = reveal ? 'text' : 'password';
+          showIcon.hidden = reveal;
+          hideIcon.hidden = !reveal;
+          toggle.setAttribute('aria-pressed', String(reveal));
+          toggle.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        });
+      })();
+    </script>
+
+    <p style="text-align:center; margin-top:20px; font-size:0.9rem;">
+      Déjà un compte ? <a href="{% url 'login' %}">Connectez-vous ici</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

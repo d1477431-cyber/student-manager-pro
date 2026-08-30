@@ -11,6 +11,50 @@
   </div>
 </div>
 
+{% if pending_users %}
+<div class="card" style="border-left:4px solid var(--warning); margin-bottom:20px;">
+  <div class="card-header">
+    <div class="card-title">⏳ Demandes d'inscription en attente</div>
+    <span class="text-muted">{{ pending_users|length }} en attente</span>
+  </div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Identifiant</th>
+          <th>Nom complet</th>
+          <th>Email</th>
+          <th>Demandé le</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pending in pending_users %}
+          <tr>
+            <td><strong>{{ pending.username }}</strong></td>
+            <td>{{ pending.first_name }} {{ pending.last_name }}</td>
+            <td style="color:var(--text-secondary);">{{ pending.email|default:"-" }}</td>
+            <td style="color:var(--text-secondary); font-size:0.85rem;">{{ pending.date_joined|date:"d/m/Y H:i" }}</td>
+            <td>
+              <div class="action-row" style="justify-content:flex-start;">
+                <form method="post" action="{% url 'approuver_utilisateur' pending.id %}" style="margin:0;">
+                  {% csrf_token %}
+                  <button class="btn btn-primary btn-sm" type="submit">✅ Approuver</button>
+                </form>
+                <form method="post" action="{% url 'rejeter_utilisateur' pending.id %}" style="margin:0;" onsubmit="return confirm('Rejeter et supprimer cette demande ?');">
+                  {% csrf_token %}
+                  <button class="btn btn-danger btn-sm" type="submit">✗ Rejeter</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 <div class="card">
   {% if users %}
     <div class="table-container">

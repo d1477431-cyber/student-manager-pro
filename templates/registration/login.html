@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load icon_tags %}
 
 {% block content %}
 <div class="login-shell">
@@ -14,6 +15,12 @@
     <h2 style="margin:0 0 8px; font-size:1.5rem;">🔐 Connexion</h2>
     <p style="color:var(--muted); margin-bottom:24px;">Connectez-vous avec vos identifiants</p>
 
+    {% if error %}
+      <div class="form-help" style="color:var(--danger); background:var(--surface-strong); border-left:3px solid var(--danger); padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+        {{ error }}
+      </div>
+    {% endif %}
+
     <form method="post">
       {% csrf_token %}
       <div class="form-group">
@@ -22,12 +29,41 @@
       </div>
       <div class="form-group">
         <label for="password">Mot de passe</label>
-        <input type="password" id="password" name="password" placeholder="Votre mot de passe" required>
+        <div class="password-field">
+          <input type="password" id="password" name="password" placeholder="Votre mot de passe" required>
+          <button type="button" class="password-toggle" id="togglePassword" aria-pressed="false" aria-label="Afficher le mot de passe">
+            <span class="icon-show">{% icon 'eye' %}</span>
+            <span class="icon-hide" hidden>{% icon 'eye_off' %}</span>
+          </button>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width:100%; padding:14px; font-size:1.05rem; margin-top:8px;">Se connecter</button>
     </form>
 
-    <p style="text-align:center; margin-top:20px; color:var(--muted); font-size:0.85rem;">
+    <script>
+      (function () {
+        var toggle = document.getElementById('togglePassword');
+        var input = document.getElementById('password');
+        if (!toggle || !input) return;
+        var showIcon = toggle.querySelector('.icon-show');
+        var hideIcon = toggle.querySelector('.icon-hide');
+        toggle.addEventListener('click', function () {
+          var reveal = input.type === 'password';
+          input.type = reveal ? 'text' : 'password';
+          showIcon.hidden = reveal;
+          hideIcon.hidden = !reveal;
+          toggle.setAttribute('aria-pressed', String(reveal));
+          toggle.setAttribute('aria-label', reveal ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+        });
+      })();
+    </script>
+
+    <p style="text-align:center; margin-top:20px; font-size:0.9rem;">
+      Vous êtes professeur et n'avez pas de compte ?
+      <a href="{% url 'register' %}">Inscrivez-vous ici</a>
+    </p>
+
+    <p style="text-align:center; margin-top:12px; color:var(--muted); font-size:0.85rem;">
       Student Manager PRO v2.1.0 — Application de gestion académique
     </p>
   </div>

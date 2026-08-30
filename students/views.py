@@ -15,8 +15,9 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
-from .forms import StudentForm, ChangePasswordForm
+from .forms import StudentForm, ChangePasswordForm, RegisterForm
 from .logic import calculate_average, get_appreciation, parse_notes, sanitize_cell
+from .realtime import notify_user
 from .models import (
     Student, CustomUser, Log, Payment, Echeance, Absence, Cours, Message, Note,
     Annonce, Notification, ALLOWED_ATTACHMENT_EXTENSIONS,
@@ -129,6 +130,40 @@ def login_view(request):
                                details=f"Tentative échouée")
     
     return render(request, 'registration/login.html', {'error': error_message})
+
+
+def register_view(request):
+    """Auto-inscription d'un compte Professeur, en attente d'approbation par un admin."""
+    if request.user.is_authenticated:
+        return redirect('index')
+
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = CustomUser.objects.create(
+                username=form.cleaned_data['username'],
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', ''),
+                email=form.cleaned_data.get('email', ''),
+                password=make_password(form.cleaned_data['password']),
+                role='Professeur',
+                status='pending',
+                must_change_password=False,
+            )
+            Log.objects.create(
+                username=user.username, event='REGISTER_REQUEST',
+                details="Demande d'inscription Professeur (en attente d'approbation)"
+            )
+            messages.success(
+                request,
+                "✅ Votre demande d'inscription a été envoyée. Un administrateur doit "
+                "approuver votre compte avant que vous puissiez vous connecter."
+            )
+            return redirect('login')
+    else:
+        form = RegisterForm()
+
+    return render(request, 'registration/register.html', {'form': form})
 
 
 @login_required
@@ -270,14 +305,22 @@ def index(request):
     filiere_filter = request.GET.get('filiere', '').strip()
     niveau_filter = request.GET.get('niveau', '').strip()
     
-    # Vérifier les permissions pour voir les finances
+    # Vérifier les permissions d'affichage selon le rôle
     can_view_finances = False
+    can_add_student = False
+    can_export_data = False
+    can_generate_documents = False
+    can_delete_student = False
     try:
         cu = CustomUser.objects.get(username=request.user.username)
         can_view_finances = cu.has_permission('can_view_finances')
+        can_add_student = cu.has_permission('can_add_student')
+        can_export_data = cu.has_permission('can_export_data')
+        can_generate_documents = cu.has_permission('can_generate_documents')
+        can_delete_student = cu.has_permission('can_delete_student')
     except CustomUser.DoesNotExist:
         pass
-    
+
     students = Student.objects.all().prefetch_related('notes')
     
     if query:
@@ -457,6 +500,10 @@ def index(request):
         'paiement_filter': paiement_filter, 'filiere_filter': filiere_filter, 'niveau_filter': niveau_filter,
         'filieres': filieres, 'niveaux': niveaux,
         'can_view_finances': can_view_finances,
+        'can_add_student': can_add_student,
+        'can_export_data': can_export_data,
+        'can_generate_documents': can_generate_documents,
+        'can_delete_student': can_delete_student,
         'total_scolarite': total_scolarite, 'total_encaisse': total_encaisse, 'total_dettes': total_dettes,
         'a_jour': a_jour, 'en_retard': en_retard, 'partiel': partiel,
         'alertes': alertes,
@@ -465,6 +512,7 @@ def index(request):
 
 
 @login_required
+@permission_required('can_add_student')
 def add_student(request):
     if request.method == 'POST':
         form = StudentForm(request.POST, request.FILES)
@@ -724,8 +772,44 @@ def logs_view(request):
 @login_required
 @permission_required('can_manage_users')
 def utilisateurs_view(request):
-    users = CustomUser.objects.all().order_by('username')
-    return render(request, 'students/utilisateurs.html', {'users': users})
+    users = CustomUser.objects.exclude(status='pending').order_by('username')
+    pending_users = CustomUser.objects.filter(status='pending').order_by('-date_joined')
+    return render(request, 'students/utilisateurs.html', {
+        'users': users,
+        'pending_users': pending_users,
+    })
+
+
+@login_required
+@permission_required('can_manage_users')
+def approuver_utilisateur(request, user_id):
+    """Approuve une demande d'inscription en attente : active le compte."""
+    if request.method == 'POST':
+        target = get_object_or_404(CustomUser, id=user_id, status='pending')
+        target.status = 'active'
+        target.save(update_fields=['status'])
+        Log.objects.create(username=request.user.username, event='USER_APPROVE',
+                           details=f"Compte approuvé : {target.username}")
+        Notification.objects.create(
+            destinataire=target, type='systeme', titre='Compte approuvé',
+            message="Votre compte a été approuvé. Vous pouvez maintenant vous connecter.",
+        )
+        messages.success(request, f"✅ Compte de {target.username} approuvé.")
+    return redirect('utilisateurs')
+
+
+@login_required
+@permission_required('can_manage_users')
+def rejeter_utilisateur(request, user_id):
+    """Rejette une demande d'inscription en attente : supprime le compte."""
+    if request.method == 'POST':
+        target = get_object_or_404(CustomUser, id=user_id, status='pending')
+        username = target.username
+        target.delete()
+        Log.objects.create(username=request.user.username, event='USER_REJECT',
+                           details=f"Demande d'inscription rejetée : {username}")
+        messages.success(request, f"🗑️ Demande de {username} rejetée.")
+    return redirect('utilisateurs')
 
 
 # ==================== ABSENCES ====================
@@ -795,7 +879,17 @@ def emploi_du_temps(request):
     if niveau_filter:
         cours = cours.filter(niveau__iexact=niveau_filter)
 
+    can_manage_schedule = False
+    try:
+        cu = CustomUser.objects.get(username=request.user.username)
+        can_manage_schedule = cu.has_permission('can_manage_schedule')
+    except CustomUser.DoesNotExist:
+        pass
+
     if request.method == 'POST':
+        if not can_manage_schedule:
+            messages.error(request, "⛔ Seul un administrateur peut modifier l'emploi du temps.")
+            return redirect(f'emploi-du-temps?filiere={filiere_filter}&niveau={niveau_filter}')
         action = request.POST.get('action')
         if action == 'add':
             Cours.objects.create(
@@ -824,6 +918,7 @@ def emploi_du_temps(request):
         'planning': planning, 'jours': jours, 'cours_list': cours,
         'filieres': filieres, 'niveaux': niveaux,
         'filiere_filter': filiere_filter, 'niveau_filter': niveau_filter,
+        'can_manage_schedule': can_manage_schedule,
     })
 
 
@@ -929,10 +1024,18 @@ def messagerie_view(request):
         if dest_username and sujet and contenu:
             try:
                 destinataire = CustomUser.objects.get(username=dest_username)
-                Message.objects.create(
+                msg = Message.objects.create(
                     expediteur=current_user, destinataire=destinataire,
                     sujet=sujet, contenu=contenu
                 )
+                notify_user(destinataire.id, {
+                    'event': 'new_message',
+                    'id': msg.id,
+                    'expediteur': current_user.username,
+                    'sujet': msg.sujet,
+                    'date_envoi': msg.date_envoi.strftime('%d/%m/%Y %H:%M'),
+                    'non_lus': Message.objects.filter(destinataire=destinataire, lu=False).count(),
+                })
                 messages.success(request, f'Message envoyé à {dest_username}.')
             except CustomUser.DoesNotExist:
                 messages.error(request, 'Destinataire introuvable.')
@@ -1045,6 +1148,7 @@ def classement_view(request):
 # ==================== CARTE ÉTUDIANT PRÉVISUALISATION ====================
 
 @login_required
+@permission_required('can_generate_documents')
 def carte_preview(request, matricule):
     student = get_object_or_404(Student, matricule=matricule)
     notes_list = [float(n.valeur) for n in student.notes.all()]
@@ -1064,6 +1168,7 @@ def carte_preview(request, matricule):
 # ==================== CARTE ÉTUDIANT PDF ====================
 
 @login_required
+@permission_required('can_generate_documents')
 def carte_etudiant_pdf(request, matricule):
     if not REPORTLAB_AVAILABLE:
         messages.error(request, 'ReportLab n\'est pas installé.')
@@ -1182,6 +1287,7 @@ def envoyer_rappels_email(request):
 # ==================== BULLETIN PRÉVISUALISATION ====================
 
 @login_required
+@permission_required('can_generate_documents')
 def bulletins_list(request):
     """Page listant tous les étudiants avec accès à leurs bulletins"""
     students = Student.objects.all().order_by('-matricule').prefetch_related('notes')
@@ -1199,6 +1305,7 @@ def bulletins_list(request):
 
 
 @login_required
+@permission_required('can_generate_documents')
 def bulletin_preview(request, matricule):
     student = get_object_or_404(Student, matricule=matricule)
     notes_list = [float(n.valeur) for n in student.notes.all()]
@@ -1215,6 +1322,7 @@ def bulletin_preview(request, matricule):
 # ==================== BULLETIN PDF ====================
 
 @login_required
+@permission_required('can_generate_documents')
 def bulletin_pdf(request, matricule):
     if not REPORTLAB_AVAILABLE:
         messages.error(request, 'ReportLab n\'est pas installé.')

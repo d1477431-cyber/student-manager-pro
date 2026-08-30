@@ -22,6 +22,7 @@ class CustomUser(AbstractUser):
     STATUS_CHOICES = [
         ('active', 'Actif'),
         ('inactive', 'Inactif'),
+        ('pending', "En attente d'approbation"),
     ]
     THEME_CHOICES = [
         ('dark', 'Sombre'), ('light', 'Clair'), ('nature', 'Nature'),
@@ -46,6 +47,9 @@ class CustomUser(AbstractUser):
             ("can_delete_student", "Peut supprimer des étudiants"),
             ("can_export_data", "Peut exporter les données"),
             ("can_view_logs", "Peut voir le journal d'audit"),
+            ("can_add_student", "Peut ajouter un étudiant"),
+            ("can_generate_documents", "Peut générer bulletins et cartes d'étudiant"),
+            ("can_manage_schedule", "Peut créer/modifier l'emploi du temps"),
         ]
 
     def __str__(self):
@@ -53,9 +57,12 @@ class CustomUser(AbstractUser):
 
     def can_login(self):
         """Vérifie si l'utilisateur est autorisé à se connecter."""
+        if self.status == 'pending':
+            return False, "⏳ Votre inscription est en attente d'approbation par l'administrateur."
+
         if self.status == 'inactive':
             return False, "❌ Ce compte est désactivé. Contactez l'administrateur."
-        
+
         if self.is_locked():
             remaining = int((self.locked_until - timezone.now()).total_seconds() / 60)
             return False, f"🔒 Compte verrouillé. Réessayez dans {remaining} minute(s)."
@@ -90,9 +97,15 @@ class CustomUser(AbstractUser):
             return True
 
         # Logique de secours basée sur le rôle (peut être conservée ou migrée)
+        # Le Professeur ne peut pas ajouter d'étudiant, importer/exporter des données,
+        # générer bulletins/cartes ou modifier l'emploi du temps — il peut en revanche
+        # consulter le classement, les statistiques et son emploi du temps.
         permissions_map = {
             'can_view_finances': ['Admin', 'Secrétaire'],
-            'can_export_data': ['Admin', 'Secrétaire', 'Professeur'],
+            'can_export_data': ['Admin', 'Secrétaire'],
+            'can_add_student': ['Admin', 'Secrétaire'],
+            'can_generate_documents': ['Admin', 'Secrétaire'],
+            'can_manage_schedule': ['Admin'],
         }
         allowed_roles = permissions_map.get(perm, [])
         return self.role in allowed_roles

@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
     path('login/', views.login_view, name='login'),
+    path('register/', views.register_view, name='register'),
     path('logout/', views.logout_view, name='logout'),
     path('change-password/', views.change_password_view, name='change_password'),
     path('export/csv/', views.export_students_csv, name='export_students_csv'),
@@ -23,6 +24,8 @@ urlpatterns = [
     path('logs/', views.logs_view, name='logs'),
     # Utilisateurs
     path('utilisateurs/', views.utilisateurs_view, name='utilisateurs'),
+    path('utilisateurs/approuver/<int:user_id>/', views.approuver_utilisateur, name='approuver_utilisateur'),
+    path('utilisateurs/rejeter/<int:user_id>/', views.rejeter_utilisateur, name='rejeter_utilisateur'),
     # Bulletins
     path('bulletins/', views.bulletins_list, name='bulletins_list'),
     path('bulletin/<str:matricule>/apercu/', views.bulletin_preview, name='bulletin_preview'),

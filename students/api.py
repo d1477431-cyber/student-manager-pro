@@ -26,12 +26,15 @@ class IsAuthenticatedRole(permissions.BasePermission):
 
 
 class StudentAPIPermission(IsAuthenticatedRole):
-    """Comme les vues web : tout utilisateur connecté peut lire/créer/modifier,
-    mais seul un rôle avec can_delete_student peut supprimer un étudiant."""
+    """Comme les vues web : tout utilisateur connecté peut lire/modifier (ex. saisir
+    des notes), mais seul un rôle avec can_add_student peut créer un étudiant et
+    seul un rôle avec can_delete_student peut le supprimer."""
 
     def has_permission(self, request, view):
         if not super().has_permission(request, view):
             return False
+        if request.method == 'POST':
+            return request.user.has_permission('can_add_student')
         if request.method == 'DELETE':
             return request.user.has_permission('can_delete_student')
         return True

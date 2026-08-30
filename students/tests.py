@@ -301,10 +301,16 @@ class TestCustomUserSecurity:
         prof = CustomUser.objects.create_user(
             username='prof', password='prof123', role='Professeur',
         )
+        # Un Professeur ne peut pas gérer les finances, les utilisateurs, supprimer/
+        # ajouter un étudiant, exporter/importer des données, générer bulletins/cartes
+        # ou modifier l'emploi du temps — il peut consulter classement et statistiques.
         assert prof.has_permission('can_view_finances') is False
         assert prof.has_permission('can_manage_users') is False
         assert prof.has_permission('can_delete_student') is False
-        assert prof.has_permission('can_export_data') is True
+        assert prof.has_permission('can_export_data') is False
+        assert prof.has_permission('can_add_student') is False
+        assert prof.has_permission('can_generate_documents') is False
+        assert prof.has_permission('can_manage_schedule') is False
         assert prof.has_permission('can_view_logs') is False
 
 
@@ -340,10 +346,16 @@ class TestViews:
         assert response.status_code == 200
 
     def test_add_student_authenticated(self, client):
-        User.objects.create_user(username='test', password='test12345')
+        User.objects.create_user(username='test', password='test12345', role='Admin')
         client.login(username='test', password='test12345')
         response = client.get(reverse('add_student'))
         assert response.status_code == 200
+
+    def test_add_student_denied_for_professeur(self, client):
+        User.objects.create_user(username='prof_add', password='test12345', role='Professeur')
+        client.login(username='prof_add', password='test12345')
+        response = client.get(reverse('add_student'))
+        assert response.status_code == 302
 
     def test_classement_view(self, client):
         User.objects.create_user(username='test', password='test12345')
@@ -356,6 +368,87 @@ class TestViews:
         client.login(username='test', password='test12345')
         response = client.get(reverse('logout'))
         assert response.status_code == 302  # Redirect après logout
+
+
+# ===== TESTS INSCRIPTION / APPROBATION =====
+
+@pytest.mark.django_db
+class TestRegistration:
+    def test_register_page(self, client):
+        response = client.get(reverse('register'))
+        assert response.status_code == 200
+
+    def test_register_creates_pending_professeur(self, client):
+        response = client.post(reverse('register'), {
+            'username': 'newprof', 'first_name': 'Jean', 'last_name': 'Dupont',
+            'email': 'jean@example.com',
+            'password': 'motdepasse123', 'confirm_password': 'motdepasse123',
+        })
+        assert response.status_code == 302
+        user = User.objects.get(username='newprof')
+        assert user.role == 'Professeur'
+        assert user.status == 'pending'
+
+    def test_register_password_mismatch(self, client):
+        response = client.post(reverse('register'), {
+            'username': 'newprof2', 'password': 'motdepasse123',
+            'confirm_password': 'autremotdepasse',
+        })
+        assert response.status_code == 200  # Reste sur le formulaire
+        assert not User.objects.filter(username='newprof2').exists()
+
+    def test_register_duplicate_username(self, client):
+        User.objects.create_user(username='dup', password='test12345')
+        response = client.post(reverse('register'), {
+            'username': 'dup', 'password': 'motdepasse123',
+            'confirm_password': 'motdepasse123',
+        })
+        assert response.status_code == 200
+        assert User.objects.filter(username='dup').count() == 1
+
+    def test_pending_account_cannot_login(self, client):
+        user = User.objects.create_user(username='pendingprof', password='test12345', role='Professeur')
+        user.status = 'pending'
+        user.save()
+        response = client.post(reverse('login'), {
+            'username': 'pendingprof', 'password': 'test12345',
+        })
+        assert response.status_code == 200  # Reste sur login avec message d'erreur
+        assert not response.wsgi_request.user.is_authenticated
+
+    def test_admin_approve_pending_user(self, client):
+        admin = User.objects.create_user(username='admin1', password='test12345', role='Admin')
+        pending = User.objects.create_user(username='pendingprof2', password='test12345', role='Professeur')
+        pending.status = 'pending'
+        pending.save()
+
+        client.login(username='admin1', password='test12345')
+        response = client.post(reverse('approuver_utilisateur', args=[pending.id]))
+        assert response.status_code == 302
+        pending.refresh_from_db()
+        assert pending.status == 'active'
+
+    def test_approve_denied_for_non_admin(self, client):
+        prof = User.objects.create_user(username='prof3', password='test12345', role='Professeur')
+        pending = User.objects.create_user(username='pendingprof3', password='test12345', role='Professeur')
+        pending.status = 'pending'
+        pending.save()
+
+        client.login(username='prof3', password='test12345')
+        client.post(reverse('approuver_utilisateur', args=[pending.id]))
+        pending.refresh_from_db()
+        assert pending.status == 'pending'  # Inchangé : pas les droits
+
+    def test_admin_reject_pending_user(self, client):
+        admin = User.objects.create_user(username='admin2', password='test12345', role='Admin')
+        pending = User.objects.create_user(username='pendingprof4', password='test12345', role='Professeur')
+        pending.status = 'pending'
+        pending.save()
+
+        client.login(username='admin2', password='test12345')
+        response = client.post(reverse('rejeter_utilisateur', args=[pending.id]))
+        assert response.status_code == 302
+        assert not User.objects.filter(username='pendingprof4').exists()
 
 
 # ===== TESTS DE L'API REST =====
@@ -371,7 +464,7 @@ class TestRESTAPI:
         assert 'results' in data
 
     def test_api_students_create(self, client):
-        user = User.objects.create_user(username='apiuser2', password='test12345')
+        user = User.objects.create_user(username='apiuser2', password='test12345', role='Admin')
         client.login(username='apiuser2', password='test12345')
         response = client.post('/api/students/', {
             'matricule': 'API001',
@@ -388,6 +481,15 @@ class TestRESTAPI:
         student = Student.objects.get(matricule='API001')
         assert student.notes.count() == 3
         assert student.get_moyenne() == 15.0
+
+    def test_api_students_create_denied_for_professeur(self, client):
+        User.objects.create_user(username='apiuser2b', password='test12345', role='Professeur')
+        client.login(username='apiuser2b', password='test12345')
+        response = client.post('/api/students/', {
+            'matricule': 'API002', 'nom': 'X', 'prenom': 'Y', 'age': 20,
+        }, content_type='application/json')
+        assert response.status_code == 403
+        assert not Student.objects.filter(matricule='API002').exists()
 
     def test_api_students_detail(self, client):
         user = User.objects.create_user(username='apiuser3', password='test12345')

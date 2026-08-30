@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     {% load static %}
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'css/student_manager.css' %}">
+    <link rel="stylesheet" href="{% static 'css/student_manager.css' %}?v=4">
 </head>
 <body>
 
@@ -54,7 +54,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
                 <span>Messages</span>
-                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+                <span class="sidebar-badge sidebar-badge-urgent" id="sidebarMessagesBadge" {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</span>
             </a>
             <a href="{% url 'annonces' %}" class="sidebar-link {% if 'annonces' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
@@ -85,7 +85,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
                 <span>Absences</span>
-                <span class="sidebar-badge sidebar-badge-warning">2</span>
+                <span class="sidebar-badge sidebar-badge-warning" {% if not absences_du_jour %}hidden{% endif %}>{{ absences_du_jour }}</span>
             </a>
             <a href="{% url 'stats_avancees' %}" class="sidebar-link {% if 'stats' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
@@ -101,7 +101,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M18 12h.01"/><path d="M22 9H2"/></svg>
                 <span>Paiements</span>
-                <span class="sidebar-badge sidebar-badge-urgent">3</span>
+                <span class="sidebar-badge sidebar-badge-urgent" {% if not paiements_en_retard %}hidden{% endif %}>{{ paiements_en_retard }}</span>
             </a>
             <a href="{% url 'rapports_financiers' %}" class="sidebar-link {% if 'rapports' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
@@ -160,7 +160,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
                 <span>Absences</span>
-                <span class="sidebar-badge sidebar-badge-warning">2</span>
+                <span class="sidebar-badge sidebar-badge-warning" {% if not absences_du_jour %}hidden{% endif %}>{{ absences_du_jour }}</span>
             </a>
             <a href="{% url 'emploi_du_temps' %}" class="sidebar-link {% if 'emploi' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
@@ -179,7 +179,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M18 12h.01"/><path d="M22 9H2"/></svg>
                 <span>Paiements</span>
-                <span class="sidebar-badge sidebar-badge-urgent">3</span>
+                <span class="sidebar-badge sidebar-badge-urgent" {% if not paiements_en_retard %}hidden{% endif %}>{{ paiements_en_retard }}</span>
             </a>
             <a href="{% url 'rapports_financiers' %}" class="sidebar-link {% if 'rapports' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
@@ -193,7 +193,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
                 <span>Messages</span>
-                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+                <span class="sidebar-badge sidebar-badge-urgent" id="sidebarMessagesBadge" {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</span>
             </a>
         </div>
 
@@ -213,11 +213,21 @@
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
                 <span>Emploi du temps</span>
             </a>
+            <a href="{% url 'classement' %}" class="sidebar-link {% if 'classement' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="6"/><path d="M15.5 13.5L12 22l-3.5-8.5"/></svg>
+                <span>Classement</span>
+            </a>
+            <a href="{% url 'stats_avancees' %}" class="sidebar-link {% if 'stats' in request.path %}active{% endif %}">
+                <span class="sidebar-link-indicator"></span>
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 20V10"/><path d="M12 20V4"/><path d="M4 20V14"/></svg>
+                <span>Statistiques</span>
+            </a>
             <a href="{% url 'absences' %}" class="sidebar-link {% if 'absences' in request.path %}active{% endif %}">
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h8"/></svg>
                 <span>Absences</span>
-                <span class="sidebar-badge sidebar-badge-warning">2</span>
+                <span class="sidebar-badge sidebar-badge-warning" {% if not absences_du_jour %}hidden{% endif %}>{{ absences_du_jour }}</span>
             </a>
         </div>
         <div class="sidebar-group">
@@ -226,7 +236,7 @@
                 <span class="sidebar-link-indicator"></span>
                 <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
                 <span>Messages</span>
-                <span class="sidebar-badge sidebar-badge-urgent">5</span>
+                <span class="sidebar-badge sidebar-badge-urgent" id="sidebarMessagesBadge" {% if not unread_messages %}hidden{% endif %}>{{ unread_messages }}</span>
             </a>
         </div>
         {% endif %}
@@ -492,5 +502,53 @@
             document.head.appendChild(style);
         })();
     </script>
+
+    {% if user.is_authenticated %}
+    <script>
+        (function () {
+            var socket = null;
+            var reconnectDelay = 2000;
+
+            function connect() {
+                var proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+                socket = new WebSocket(proto + location.host + '/ws/messagerie/');
+
+                socket.onmessage = function (e) {
+                    var payload;
+                    try { payload = JSON.parse(e.data); } catch (err) { return; }
+                    if (payload.event === 'new_message') {
+                        updateBadge(payload.non_lus);
+                        showToast('📨 Nouveau message de ' + payload.expediteur, payload.sujet);
+                        document.dispatchEvent(new CustomEvent('sm:new-message', { detail: payload }));
+                    }
+                };
+
+                socket.onclose = function () {
+                    setTimeout(connect, reconnectDelay);
+                };
+            }
+
+            function updateBadge(count) {
+                var badge = document.getElementById('sidebarMessagesBadge');
+                if (!badge) return;
+                badge.textContent = count;
+                badge.hidden = !count;
+            }
+
+            function showToast(title, body) {
+                var toast = document.createElement('div');
+                toast.className = 'sm-toast';
+                toast.innerHTML = '<strong></strong><div></div>';
+                toast.querySelector('strong').textContent = title;
+                toast.querySelector('div').textContent = body;
+                document.body.appendChild(toast);
+                setTimeout(function () { toast.classList.add('sm-toast-out'); }, 4000);
+                setTimeout(function () { toast.remove(); }, 4600);
+            }
+
+            connect();
+        })();
+    </script>
+    {% endif %}
 </body>
 </html>

@@ -51,12 +51,14 @@
               <span style="color:var(--muted);">{{ c.heure_debut|time:"H:i" }} - {{ c.heure_fin|time:"H:i" }}</span><br>
               {% if c.professeur %}<span>👤 {{ c.professeur }}</span><br>{% endif %}
               {% if c.salle %}<span>🏫 {{ c.salle }}</span>{% endif %}
+              {% if can_manage_schedule %}
               <form method="post" style="margin-top:4px;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="cours_id" value="{{ c.id }}">
                 <button class="btn btn-danger btn-sm" type="submit" style="padding:2px 8px; font-size:0.7rem;">🗑️</button>
               </form>
+              {% endif %}
             </div>
             {% empty %}
             <span style="color:var(--muted); font-size:0.8rem;">—</span>
@@ -70,6 +72,7 @@
   </table>
 </div>
 
+{% if can_manage_schedule %}
 <!-- Formulaire ajout cours -->
 <div class="card">
   <h3>➕ Ajouter un cours</h3>
@@ -115,4 +118,5 @@
     <button class="btn btn-primary" type="submit" style="margin-top:8px;">✅ Ajouter le cours</button>
   </form>
 </div>
+{% endif %}
 {% endblock %}

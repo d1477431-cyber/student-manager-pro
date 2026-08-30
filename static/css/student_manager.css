@@ -340,6 +340,10 @@ body {
     color: var(--badge-warning-fg);
 }
 
+.sidebar-badge[hidden] {
+    display: none;
+}
+
 /* ===== SPACER ===== */
 .sidebar-spacer {
     flex: 1;
@@ -1789,6 +1793,84 @@ tbody tr:hover {
 .form-group textarea {
     min-height: 100px;
     resize: vertical;
+}
+
+.sm-toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 9999;
+    max-width: 320px;
+    background: var(--surface-strong);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    padding: 14px 16px;
+    color: var(--text);
+    font-size: 0.85rem;
+    animation: sm-toast-in 0.25s ease-out;
+}
+
+.sm-toast div {
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.sm-toast-out {
+    animation: sm-toast-out 0.4s ease-in forwards;
+}
+
+@keyframes sm-toast-in {
+    from { transform: translateY(12px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes sm-toast-out {
+    to { transform: translateY(12px); opacity: 0; }
+}
+
+.password-field {
+    position: relative;
+}
+
+.password-field input {
+    padding-right: 44px !important;
+}
+
+/* Masque l'œil natif d'Edge/IE pour éviter qu'il se superpose au bouton custom */
+.password-field input::-ms-reveal,
+.password-field input::-ms-clear {
+    display: none;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.password-toggle:hover {
+    color: var(--text);
+    background: var(--surface-strong);
+}
+
+.password-toggle .icon {
+    width: 18px;
+    height: 18px;
 }
 
 .form-help {

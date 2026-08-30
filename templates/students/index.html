@@ -10,10 +10,14 @@
     <div class="page-subtitle">Vue d'ensemble de votre établissement</div>
   </div>
   <div class="action-row">
-    <a class="btn btn-primary" href="{% url 'add_student' %}">{% icon 'add' %} Ajouter un étudiant</a>
-    <a class="btn btn-secondary" href="{% url 'export_students_csv' %}">{% icon 'download' %} CSV</a>
-    <a class="btn btn-secondary" href="{% url 'export_students_excel' %}">{% icon 'chart_bar' %} Excel</a>
-    <a class="btn btn-secondary" href="{% url 'import_csv' %}">{% icon 'import' %} Import CSV</a>
+    {% if can_add_student %}
+      <a class="btn btn-primary" href="{% url 'add_student' %}">{% icon 'add' %} Ajouter un étudiant</a>
+    {% endif %}
+    {% if can_export_data %}
+      <a class="btn btn-secondary" href="{% url 'export_students_csv' %}">{% icon 'download' %} CSV</a>
+      <a class="btn btn-secondary" href="{% url 'export_students_excel' %}">{% icon 'chart_bar' %} Excel</a>
+      <a class="btn btn-secondary" href="{% url 'import_csv' %}">{% icon 'import' %} Import CSV</a>
+    {% endif %}
     <a class="btn btn-secondary" href="{% url 'classement' %}">{% icon 'trophy' %} Classement</a>
     <a class="btn btn-secondary" href="{% url 'stats_avancees' %}">{% icon 'trending' %} Statistiques</a>
   </div>
@@ -273,13 +277,17 @@
             </td>
             <td>
               <div class="action-row" style="justify-content:flex-start;">
-                <a class="btn btn-secondary btn-sm" href="{% url 'bulletin_preview' item.student.matricule %}" title="Voir le bulletin">{% icon 'file_text' 'w-4 h-4' %}</a>
-                <a class="btn btn-secondary btn-sm" href="{% url 'carte_preview' item.student.matricule %}" title="Voir la carte">{% icon 'id_card' 'w-4 h-4' %}</a>
+                {% if can_generate_documents %}
+                  <a class="btn btn-secondary btn-sm" href="{% url 'bulletin_preview' item.student.matricule %}" title="Voir le bulletin">{% icon 'file_text' 'w-4 h-4' %}</a>
+                  <a class="btn btn-secondary btn-sm" href="{% url 'carte_preview' item.student.matricule %}" title="Voir la carte">{% icon 'id_card' 'w-4 h-4' %}</a>
+                {% endif %}
                 <a class="btn btn-secondary btn-sm" href="{% url 'edit_student' item.student.matricule %}">{% icon 'edit' 'w-4 h-4' %}</a>
-                <form method="post" action="{% url 'delete_student' item.student.matricule %}" style="margin:0;">
-                  {% csrf_token %}
-                  <button class="btn btn-danger btn-sm" type="submit">{% icon 'delete' 'w-4 h-4' %}</button>
-                </form>
+                {% if can_delete_student %}
+                  <form method="post" action="{% url 'delete_student' item.student.matricule %}" style="margin:0;">
+                    {% csrf_token %}
+                    <button class="btn btn-danger btn-sm" type="submit">{% icon 'delete' 'w-4 h-4' %}</button>
+                  </form>
+                {% endif %}
               </div>
             </td>
           </tr>

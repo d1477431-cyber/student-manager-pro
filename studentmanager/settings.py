@@ -27,21 +27,31 @@ if not DEBUG and SECRET_KEY == 'django-insecure-change-me':
         "import get_random_secret_key; print(get_random_secret_key())\"`."
     )
 
-# Ajouter automatiquement les domaines Railway pour le health check
-ALLOWED_HOSTS += ['healthcheck.railway.app', '.railway.app']
+# Ajouter automatiquement les domaines Railway (health check) et Render
+ALLOWED_HOSTS += ['healthcheck.railway.app', '.railway.app', '.onrender.com']
 
 # Ajouter le domaine public Railway si disponible
 railway_public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 if railway_public_domain:
     ALLOWED_HOSTS.append(railway_public_domain)
 
+# Render fournit automatiquement le nom d'hôte externe du service
+render_external_hostname = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if render_external_hostname:
+    ALLOWED_HOSTS.append(render_external_hostname)
+
 INSTALLED_APPS = [
+    # 'daphne' doit être le tout premier app installée : cela fait passer
+    # `manage.py runserver` en mode ASGI automatiquement (nécessaire pour les
+    # WebSockets de la messagerie en temps réel).
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
@@ -78,6 +88,27 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'studentmanager.wsgi.application'
+ASGI_APPLICATION = 'studentmanager.asgi.application'
+
+# ===== CHANNELS (WebSockets — messagerie en temps réel) =====
+# En production, définir REDIS_URL (add-on Redis Railway) permet de faire
+# fonctionner les WebSockets de façon fiable avec plusieurs workers/instances.
+# Sans REDIS_URL, on utilise la couche en mémoire : elle fonctionne correctement
+# tant qu'un seul processus ASGI tourne (cas par défaut sur Railway : 1 replica).
+_redis_url = os.getenv('REDIS_URL')
+if _redis_url:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {'hosts': [_redis_url]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 # Configuration de la base de données via DATABASE_URL
 default_db_url = f"sqlite:///{BASE_DIR / 'etudiants.db'}"
@@ -107,7 +138,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 AUTH_USER_MODEL = 'students.CustomUser'
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
 
@@ -115,10 +145,44 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000'
 if railway_public_domain:
     CSRF_TRUSTED_ORIGINS.append(f'https://{railway_public_domain}')
 
-# Forcer le domaine de production (Railway)
-CSRF_TRUSTED_ORIGINS.append('https://student-manager-pro-production.up.railway.app')
+# Ajouter le domaine public Render si disponible
+if render_external_hostname:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{render_external_hostname}')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# ===== STOCKAGE DES FICHIERS (Supabase Storage, compatible S3) =====
+# En production (Render), le disque est éphémère : les photos d'étudiants et
+# pièces jointes d'annonces uploadées disparaîtraient à chaque redéploiement.
+# Si les identifiants Supabase Storage sont fournis via l'environnement, ces
+# fichiers sont stockés sur Supabase au lieu du disque local. Sans ces
+# variables (ex. en développement local), on reste sur le stockage disque
+# classique — aucun changement de comportement en local.
+AWS_STORAGE_BUCKET_NAME = os.getenv('SUPABASE_STORAGE_BUCKET', '')
+AWS_S3_ENDPOINT_URL = os.getenv('SUPABASE_S3_ENDPOINT_URL', '')
+AWS_ACCESS_KEY_ID = os.getenv('SUPABASE_S3_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.getenv('SUPABASE_S3_SECRET_ACCESS_KEY', '')
+AWS_S3_REGION_NAME = os.getenv('SUPABASE_S3_REGION', 'us-east-1')
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None       # Supabase gère les permissions via les policies du bucket
+AWS_QUERYSTRING_AUTH = False  # URLs publiques simples plutôt que des URLs signées temporaires
+AWS_S3_ADDRESSING_STYLE = 'path'  # requis par l'API S3 de Supabase
+
+USE_SUPABASE_STORAGE = bool(
+    AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL and AWS_ACCESS_KEY_ID
+)
+
+STORAGES = {
+    'default': {
+        'BACKEND': (
+            'storages.backends.s3boto3.S3Boto3Storage' if USE_SUPABASE_STORAGE
+            else 'django.core.files.storage.FileSystemStorage'
+        ),
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

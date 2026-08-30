@@ -85,4 +85,12 @@
   <div class="empty-state"><div class="empty-icon">📤</div><p>Aucun message envoyé.</p></div>
   {% endif %}
 </div>
+
+<script>
+  // Message reçu en temps réel pendant que la page est ouverte : on rafraîchit
+  // pour afficher la liste à jour (voir le WebSocket global dans base.html).
+  document.addEventListener('sm:new-message', function () {
+    location.reload();
+  });
+</script>
 {% endblock %}
