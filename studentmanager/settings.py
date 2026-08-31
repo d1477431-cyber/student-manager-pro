@@ -172,6 +172,16 @@ USE_SUPABASE_STORAGE = bool(
     AWS_STORAGE_BUCKET_NAME and AWS_S3_ENDPOINT_URL and AWS_ACCESS_KEY_ID
 )
 
+if USE_SUPABASE_STORAGE:
+    # L'URL de l'API S3 (AWS_S3_ENDPOINT_URL, /storage/v1/s3) sert à uploader,
+    # mais les fichiers d'un bucket public se lisent via un chemin différent :
+    # /storage/v1/object/public/<bucket>/<chemin>. Sans ce réglage, les URLs
+    # générées (student.photo.url, etc.) pointent vers l'API S3 et renvoient
+    # une erreur 403 pour un accès anonyme depuis le navigateur.
+    from urllib.parse import urlparse
+    _supabase_host = urlparse(AWS_S3_ENDPOINT_URL).netloc
+    AWS_S3_CUSTOM_DOMAIN = f'{_supabase_host}/storage/v1/object/public/{AWS_STORAGE_BUCKET_NAME}'
+
 STORAGES = {
     'default': {
         'BACKEND': (
