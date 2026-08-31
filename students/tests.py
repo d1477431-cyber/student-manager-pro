@@ -345,6 +345,18 @@ class TestViews:
         response = client.get(reverse('index'))
         assert response.status_code == 200
 
+    def test_dashboard_with_finances_and_payments(self, client):
+        """Le bloc finances du dashboard (Student.with_totals + compute_statut_paiement)
+        doit fonctionner avec de vrais paiements en base (regression: Decimal * float)."""
+        User.objects.create_user(username='admin_fin', password='test12345', role='Admin')
+        student = Student.objects.create(
+            matricule='TESTFIN1', nom='Kouassi', prenom='Awa', age=20, frais_scolarite=500000,
+        )
+        Payment.objects.create(student=student, montant=300000)
+        client.login(username='admin_fin', password='test12345')
+        response = client.get(reverse('index'))
+        assert response.status_code == 200
+
     def test_add_student_authenticated(self, client):
         User.objects.create_user(username='test', password='test12345', role='Admin')
         client.login(username='test', password='test12345')

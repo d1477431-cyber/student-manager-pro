@@ -111,10 +111,15 @@ else:
     }
 
 # Configuration de la base de données via DATABASE_URL
+# conn_max_age réutilise la connexion entre requêtes au lieu d'en rouvrir une
+# (handshake TCP/TLS + auth) à chaque requête — critique pour une base distante
+# comme Supabase, sinon chaque page paie ce coût même pour une seule requête.
 default_db_url = f"sqlite:///{BASE_DIR / 'etudiants.db'}"
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', default_db_url)
+        default=os.getenv('DATABASE_URL', default_db_url),
+        conn_max_age=60,
+        conn_health_checks=True,
     )
 }
 

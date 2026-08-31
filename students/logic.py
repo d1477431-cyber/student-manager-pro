@@ -1,4 +1,5 @@
 import ast
+from decimal import Decimal
 
 
 def parse_notes(value):
@@ -27,6 +28,17 @@ def calculate_average(notes):
     """Calcule la moyenne à partir d'une liste de notes (compatibilité)"""
     values = parse_notes(notes)
     return sum(values) / len(values) if values else 0.0
+
+
+def compute_statut_paiement(total_paye, frais_scolarite):
+    """Même logique que Student.statut_paiement(), mais à partir de valeurs déjà
+    calculées (ex. via une annotation ORM en une seule requête) pour éviter
+    l'anti-pattern N+1 quand on traite une liste d'étudiants."""
+    if total_paye >= frais_scolarite:
+        return "À jour"
+    if total_paye >= frais_scolarite * Decimal('0.5'):
+        return "Partiel"
+    return "En retard"
 
 
 def get_appreciation(moyenne):

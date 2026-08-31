@@ -757,7 +757,7 @@ body.dark .search-kbd {
 
 /* ===== PAGES D'AUTHENTIFICATION (login/register) : photo de campus en fond ===== */
 body.auth-page {
-    background-image: url('../img/login-bg.png');
+    background-image: url('../img/login-bg.jpg');
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;

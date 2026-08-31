@@ -16,7 +16,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 
 from .forms import StudentForm, ChangePasswordForm, RegisterForm
-from .logic import calculate_average, get_appreciation, parse_notes, sanitize_cell
+from .logic import calculate_average, get_appreciation, parse_notes, sanitize_cell, compute_statut_paiement
 from .realtime import notify_user
 from .models import (
     Student, CustomUser, Log, Payment, Echeance, Absence, Cours, Message, Note,
@@ -384,14 +384,20 @@ def index(request):
     chart_paiements = chart_impayes = None
     
     if can_view_finances:
-        all_students = Student.objects.all()
+        # Annotation en une seule requête (total payé par étudiant) plutôt que
+        # d'appeler total_paye()/statut_paiement() en boucle (N+1 queries)
+        all_students = list(Student.with_totals())
         total_scolarite = sum(float(s.frais_scolarite) for s in all_students)
-        total_encaisse = sum(float(s.total_paye()) for s in all_students)
+        total_encaisse = sum(float(s.total_paye_annot) for s in all_students)
         total_dettes = total_scolarite - total_encaisse
-        a_jour = sum(1 for s in all_students if s.statut_paiement() == 'À jour')
-        en_retard = sum(1 for s in all_students if s.statut_paiement() == 'En retard')
-        partiel = sum(1 for s in all_students if s.statut_paiement() == 'Partiel')
-        alertes = [s for s in all_students if s.statut_paiement() == 'En retard'][:5]
+        statuts = {
+            s.matricule: compute_statut_paiement(s.total_paye_annot, s.frais_scolarite)
+            for s in all_students
+        }
+        a_jour = sum(1 for v in statuts.values() if v == 'À jour')
+        en_retard = sum(1 for v in statuts.values() if v == 'En retard')
+        partiel = sum(1 for v in statuts.values() if v == 'Partiel')
+        alertes = [s for s in all_students if statuts[s.matricule] == 'En retard'][:5]
         
         # Graphiques (uniquement si permission finances)
         if MATPLOTLIB_AVAILABLE:

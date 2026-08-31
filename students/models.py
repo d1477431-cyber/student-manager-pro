@@ -137,6 +137,17 @@ class Student(models.Model):
     def __str__(self):
         return f"{self.prenom} {self.nom} ({self.matricule})"
 
+    @staticmethod
+    def with_totals(queryset=None):
+        """Annote chaque étudiant du queryset avec `total_paye_annot`, calculé
+        en une seule requête SQL (Sum + JOIN), au lieu d'appeler total_paye()
+        (une requête par étudiant) dans une boucle Python — évite l'anti-pattern
+        N+1, coûteux avec une base distante (ex. Supabase)."""
+        from django.db.models import Sum
+        from django.db.models.functions import Coalesce
+        qs = queryset if queryset is not None else Student.objects.all()
+        return qs.annotate(total_paye_annot=Coalesce(Sum('paiements__montant'), Decimal('0.00')))
+
     def get_moyenne(self):
         notes = self.notes.all()
         if notes:
