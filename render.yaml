@@ -3,6 +3,7 @@ services:
     name: student-manager-pro
     runtime: python
     plan: free
+    region: frankfurt   # proche de Supabase (eu-west-1, Irlande) : evite la latence transatlantique
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python manage.py migrate --no-input && python manage.py collectstatic --no-input && python manage.py ensure_superuser && daphne studentmanager.asgi:application --bind 0.0.0.0 --port $PORT"
     envVars:
