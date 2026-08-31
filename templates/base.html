@@ -7,9 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     {% load static %}
     <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
-    <link rel="stylesheet" href="{% static 'css/student_manager.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/student_manager.css' %}?v=9">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 
 {% if user.is_authenticated %}
 
