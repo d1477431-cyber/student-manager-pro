@@ -146,7 +146,10 @@ class Student(models.Model):
         from django.db.models import Sum
         from django.db.models.functions import Coalesce
         qs = queryset if queryset is not None else Student.objects.all()
-        return qs.annotate(total_paye_annot=Coalesce(Sum('paiements__montant'), Decimal('0.00')))
+        # order_by explicite : l'agrégation (GROUP BY implicite) peut faire perdre
+        # l'ordre par défaut du modèle (Meta.ordering), Django avertit sinon que
+        # la pagination peut devenir incohérente d'une page à l'autre.
+        return qs.annotate(total_paye_annot=Coalesce(Sum('paiements__montant'), Decimal('0.00'))).order_by('-matricule')
 
     def get_moyenne(self):
         notes = self.notes.all()

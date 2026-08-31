@@ -321,8 +321,10 @@ def index(request):
     except CustomUser.DoesNotExist:
         pass
 
-    students = Student.objects.all().prefetch_related('notes')
-    
+    # Annoté avec le total payé (une requête agrégée) plutôt que d'appeler
+    # total_paye()/statut_paiement() en boucle plus bas (N+1 queries)
+    students = Student.with_totals(Student.objects.all().prefetch_related('notes'))
+
     if query:
         search_filter = Q(nom__icontains=query) | Q(prenom__icontains=query)
         if query.isdigit():
@@ -335,13 +337,10 @@ def index(request):
     if niveau_filter:
         students = students.filter(niveau__iexact=niveau_filter)
     if paiement_filter:
-        if paiement_filter == 'a_jour':
-            students = [s for s in students if s.statut_paiement() == 'À jour']
-        elif paiement_filter == 'partiel':
-            students = [s for s in students if s.statut_paiement() == 'Partiel']
-        elif paiement_filter == 'en_retard':
-            students = [s for s in students if s.statut_paiement() == 'En retard']
-    
+        wanted = {'a_jour': 'À jour', 'partiel': 'Partiel', 'en_retard': 'En retard'}.get(paiement_filter)
+        if wanted:
+            students = [s for s in students if compute_statut_paiement(s.total_paye_annot, s.frais_scolarite) == wanted]
+
     # Pagination
     page = request.GET.get('page', 1)
     paginator = Paginator(students, 25)  # 25 étudiants par page
@@ -351,7 +350,7 @@ def index(request):
         students_page = paginator.page(1)
     except EmptyPage:
         students_page = paginator.page(paginator.num_pages)
-    
+
     student_data = []
     for s in students_page:
         notes_qs = s.notes.all()
@@ -362,9 +361,9 @@ def index(request):
             'moyenne': moyenne,
             'appreciation': get_appreciation(moyenne),
             'notes_list': notes_list,
-            'total_paye': s.total_paye() if can_view_finances else None,
-            'solde': s.solde_restant() if can_view_finances else None,
-            'statut_paiement': s.statut_paiement() if can_view_finances else None,
+            'total_paye': s.total_paye_annot if can_view_finances else None,
+            'solde': (s.frais_scolarite - s.total_paye_annot) if can_view_finances else None,
+            'statut_paiement': compute_statut_paiement(s.total_paye_annot, s.frais_scolarite) if can_view_finances else None,
             'photo_url': s.photo_url(),
         })
     
