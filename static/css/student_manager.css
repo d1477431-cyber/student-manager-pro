@@ -645,6 +645,8 @@ body.dark .topbar {
 
 .search-input {
     flex: 1;
+    min-width: 0; /* sans ça, l'input refuse de rétrécir sous sa taille naturelle
+                     dans .topbar-search, qui déborde alors sur les icônes voisines */
     border: none;
     background: none;
     outline: none;
@@ -814,6 +816,12 @@ body.auth-page .main-content {
     }
     .topbar-hamburger {
         display: flex;
+    }
+    /* Icônes d'accès rapide redondantes avec le menu latéral : masquées sur
+       mobile pour laisser de la place à la recherche */
+    .topbar-action-btn,
+    .topbar-divider {
+        display: none;
     }
     .topbar-search {
         width: 200px;
