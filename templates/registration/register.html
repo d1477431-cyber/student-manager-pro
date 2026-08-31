@@ -37,7 +37,7 @@
         {% if form.username.errors %}<div class="form-help" style="color:var(--danger);">{{ form.username.errors|striptags }}</div>{% endif %}
       </div>
 
-      <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="form-grid" style="gap:16px;">
         <div class="form-group">
           <label for="{{ form.first_name.id_for_label }}">Prénom</label>
           {{ form.first_name }}
