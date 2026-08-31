@@ -1,6 +1,6 @@
 from django.utils import timezone
 
-from .models import Notification, CustomUser, Message, Echeance, Absence
+from .models import Notification, Message, Echeance, Absence
 
 
 def notifications(request):
@@ -14,25 +14,25 @@ def notifications(request):
     paiements_en_retard = 0
     absences_du_jour = 0
     if request.user.is_authenticated:
-        try:
-            current_user = CustomUser.objects.get(username=request.user.username)
-            notifications_non_lues = Notification.objects.filter(
-                destinataire=current_user, lu=False
-            ).count()
-            unread_messages = Message.objects.filter(
-                destinataire=current_user, lu=False
-            ).count()
-            # Étudiants ayant au moins une échéance de paiement en retard
-            paiements_en_retard = Echeance.objects.filter(
-                statut__in=['en_attente', 'en_retard'],
-                date_echeance__lt=timezone.now().date(),
-            ).values('student').distinct().count()
-            # Absences non justifiées enregistrées aujourd'hui
-            absences_du_jour = Absence.objects.filter(
-                statut='absent', justifiee=False, date=timezone.now().date(),
-            ).count()
-        except CustomUser.DoesNotExist:
-            pass
+        # request.user est déjà un CustomUser (AUTH_USER_MODEL) — inutile de le
+        # requêter à nouveau. Ce context processor tourne sur CHAQUE page, donc
+        # cette requête en moins compte sur une base distante comme Supabase.
+        current_user = request.user
+        notifications_non_lues = Notification.objects.filter(
+            destinataire=current_user, lu=False
+        ).count()
+        unread_messages = Message.objects.filter(
+            destinataire=current_user, lu=False
+        ).count()
+        # Étudiants ayant au moins une échéance de paiement en retard
+        paiements_en_retard = Echeance.objects.filter(
+            statut__in=['en_attente', 'en_retard'],
+            date_echeance__lt=timezone.now().date(),
+        ).values('student').distinct().count()
+        # Absences non justifiées enregistrées aujourd'hui
+        absences_du_jour = Absence.objects.filter(
+            statut='absent', justifiee=False, date=timezone.now().date(),
+        ).count()
     return {
         'notifications_non_lues': notifications_non_lues,
         'unread_messages': unread_messages,

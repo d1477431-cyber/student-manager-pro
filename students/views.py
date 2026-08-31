@@ -169,11 +169,8 @@ def register_view(request):
 @login_required
 def change_password_view(request):
     """Vue pour forcer le changement de mot de passe"""
-    try:
-        custom_user = CustomUser.objects.get(username=request.user.username)
-    except CustomUser.DoesNotExist:
-        return redirect('index')
-    
+    custom_user = request.user  # déjà un CustomUser (AUTH_USER_MODEL)
+
     if request.method == 'POST':
         form = ChangePasswordForm(request.POST)
         if form.is_valid():
@@ -211,15 +208,14 @@ def permission_required(perm):
     """Décorateur pour vérifier les permissions par rôle"""
     def decorator(view_func):
         def wrapper(request, *args, **kwargs):
-            try:
-                custom_user = CustomUser.objects.get(username=request.user.username)
-                if not custom_user.has_permission(perm):
-                    messages.error(request, "⛔ Vous n'avez pas les droits nécessaires pour cette action.")
-                    Log.objects.create(username=request.user.username, event='PERMISSION_DENIED',
-                                       details=f"Tentative d'accès à {perm}")
-                    return redirect('index')
-            except CustomUser.DoesNotExist:
-                pass
+            # request.user est déjà un CustomUser (AUTH_USER_MODEL) : pas besoin
+            # de le requêter à nouveau. Ce décorateur protège ~15 vues, donc
+            # cette requête en moins compte sur une base distante (Supabase).
+            if request.user.is_authenticated and not request.user.has_permission(perm):
+                messages.error(request, "⛔ Vous n'avez pas les droits nécessaires pour cette action.")
+                Log.objects.create(username=request.user.username, event='PERMISSION_DENIED',
+                                   details=f"Tentative d'accès à {perm}")
+                return redirect('index')
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
@@ -306,20 +302,14 @@ def index(request):
     niveau_filter = request.GET.get('niveau', '').strip()
     
     # Vérifier les permissions d'affichage selon le rôle
-    can_view_finances = False
-    can_add_student = False
-    can_export_data = False
-    can_generate_documents = False
-    can_delete_student = False
-    try:
-        cu = CustomUser.objects.get(username=request.user.username)
-        can_view_finances = cu.has_permission('can_view_finances')
-        can_add_student = cu.has_permission('can_add_student')
-        can_export_data = cu.has_permission('can_export_data')
-        can_generate_documents = cu.has_permission('can_generate_documents')
-        can_delete_student = cu.has_permission('can_delete_student')
-    except CustomUser.DoesNotExist:
-        pass
+    # request.user est déjà un CustomUser (AUTH_USER_MODEL) : pas besoin de le
+    # requêter à nouveau (une requête de moins sur cette page à fort trafic)
+    cu = request.user
+    can_view_finances = cu.has_permission('can_view_finances')
+    can_add_student = cu.has_permission('can_add_student')
+    can_export_data = cu.has_permission('can_export_data')
+    can_generate_documents = cu.has_permission('can_generate_documents')
+    can_delete_student = cu.has_permission('can_delete_student')
 
     # Annoté avec le total payé (une requête agrégée) plutôt que d'appeler
     # total_paye()/statut_paiement() en boucle plus bas (N+1 queries)
@@ -830,12 +820,7 @@ def emploi_du_temps(request):
     if niveau_filter:
         cours = cours.filter(niveau__iexact=niveau_filter)
 
-    can_manage_schedule = False
-    try:
-        cu = CustomUser.objects.get(username=request.user.username)
-        can_manage_schedule = cu.has_permission('can_manage_schedule')
-    except CustomUser.DoesNotExist:
-        pass
+    can_manage_schedule = request.user.has_permission('can_manage_schedule')
 
     if request.method == 'POST':
         if not can_manage_schedule:
@@ -877,10 +862,7 @@ def emploi_du_temps(request):
 
 @login_required
 def annonces_view(request):
-    try:
-        current_user = CustomUser.objects.get(username=request.user.username)
-    except CustomUser.DoesNotExist:
-        return redirect('index')
+    current_user = request.user  # déjà un CustomUser (AUTH_USER_MODEL)
 
     query = request.GET.get('q', '').strip()
     categorie_filter = request.GET.get('categorie', '').strip()
@@ -958,10 +940,7 @@ def supprimer_annonce(request, annonce_id):
 
 @login_required
 def messagerie_view(request):
-    try:
-        current_user = CustomUser.objects.get(username=request.user.username)
-    except CustomUser.DoesNotExist:
-        return redirect('index')
+    current_user = request.user  # déjà un CustomUser (AUTH_USER_MODEL)
 
     messages_recus = Message.objects.filter(destinataire=current_user).order_by('-date_envoi')
     messages_envoyes = Message.objects.filter(expediteur=current_user).order_by('-date_envoi')
@@ -1004,10 +983,7 @@ def messagerie_view(request):
 
 @login_required
 def lire_message(request, message_id):
-    try:
-        current_user = CustomUser.objects.get(username=request.user.username)
-    except CustomUser.DoesNotExist:
-        return redirect('index')
+    current_user = request.user  # déjà un CustomUser (AUTH_USER_MODEL)
     msg = get_object_or_404(Message, id=message_id, destinataire=current_user)
     msg.lu = True
     msg.save()
@@ -1571,12 +1547,7 @@ def rapports_financiers(request):
 @login_required
 def notifications_view(request):
     """Liste toutes les notifications de l'utilisateur connecté"""
-    try:
-        current_user = CustomUser.objects.get(username=request.user.username)
-    except CustomUser.DoesNotExist:
-        return redirect('index')
-
-    notifications = Notification.objects.filter(destinataire=current_user)
+    notifications = Notification.objects.filter(destinataire=request.user)
     return render(request, 'students/notifications.html', {
         'notifications': notifications,
     })
@@ -1586,13 +1557,9 @@ def notifications_view(request):
 def notification_mark_read(request, notification_id):
     """Marque une notification comme lue"""
     if request.method == 'POST':
-        try:
-            current_user = CustomUser.objects.get(username=request.user.username)
-            notif = get_object_or_404(Notification, id=notification_id, destinataire=current_user)
-            notif.lu = True
-            notif.save()
-        except CustomUser.DoesNotExist:
-            pass
+        notif = get_object_or_404(Notification, id=notification_id, destinataire=request.user)
+        notif.lu = True
+        notif.save()
     return redirect('notifications')
 
 
@@ -1600,9 +1567,5 @@ def notification_mark_read(request, notification_id):
 def notifications_mark_all_read(request):
     """Marque toutes les notifications de l'utilisateur comme lues"""
     if request.method == 'POST':
-        try:
-            current_user = CustomUser.objects.get(username=request.user.username)
-            Notification.objects.filter(destinataire=current_user, lu=False).update(lu=True)
-        except CustomUser.DoesNotExist:
-            pass
+        Notification.objects.filter(destinataire=request.user, lu=False).update(lu=True)
     return redirect('notifications')
