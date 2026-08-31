@@ -1365,6 +1365,7 @@ body.auth-page .main-content {
     transition: var(--transition-slow);
     animation: fadeInUp 0.5s ease;
     animation-fill-mode: both;
+    min-width: 0; /* évite qu'une carte force sa grille parente à déborder sur mobile */
 }
 
 .card:nth-child(1) { animation-delay: 0.05s; }
@@ -1767,7 +1768,10 @@ tbody tr:hover {
     gap: 20px;
 }
 
-.form-group { margin-bottom: 4px; }
+/* min-width:0 : sans ça, un enfant de grille (.form-grid, .dashboard-grid...)
+   refuse de rétrécir sous la largeur de son contenu (label, placeholder...),
+   ce qui force la grille — et donc la page — à déborder sur petit écran. */
+.form-group { margin-bottom: 4px; min-width: 0; }
 
 .form-group label {
     display: block;
@@ -2021,11 +2025,19 @@ tbody tr:hover {
     -webkit-backdrop-filter: blur(16px) saturate(160%);
     border: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    padding: 24px;
+    text-align: center;
 }
 
 .auth-info-card h3 { color: #fff; }
 .auth-info-card p { color: rgba(255,255,255,0.8); }
 .auth-info-card strong { color: #fff; }
+
+@media (max-width: 640px) {
+    .card.auth-info-card {
+        padding: 18px;
+    }
+}
 
 .hero-panel hr {
     border: none;
