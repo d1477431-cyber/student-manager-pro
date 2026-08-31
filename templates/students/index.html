@@ -135,7 +135,8 @@
       </div>
     </div>
     <div class="chart-card-body">
-      <img src="data:image/png;base64,{{ chart_paiements }}" alt="Évolution des paiements" class="chart-img">
+      <canvas id="chartPaiements" height="220"></canvas>
+      {{ chart_paiements|json_script:"chart-paiements-data" }}
     </div>
   </div>
   {% endif %}
@@ -154,11 +155,66 @@
       </div>
     </div>
     <div class="chart-card-body">
-      <img src="data:image/png;base64,{{ chart_impayes }}" alt="Taux d'impayés par filière" class="chart-img">
+      <canvas id="chartImpayes" height="220"></canvas>
+      {{ chart_impayes|json_script:"chart-impayes-data" }}
     </div>
   </div>
   {% endif %}
 </div>
+
+<script src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  var paiementsEl = document.getElementById('chart-paiements-data');
+  if (paiementsEl) {
+    var d = JSON.parse(paiementsEl.textContent);
+    new Chart(document.getElementById('chartPaiements'), {
+      type: 'line',
+      data: {
+        labels: d.labels,
+        datasets: [{
+          label: 'Paiements (FCFA)',
+          data: d.values,
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79,70,229,0.15)',
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#4f46e5',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+        }],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+
+  var impayesEl = document.getElementById('chart-impayes-data');
+  if (impayesEl) {
+    var d2 = JSON.parse(impayesEl.textContent);
+    var colors = d2.values.map(function (v) {
+      return v > 50 ? '#ef4444' : v > 25 ? '#f59e0b' : '#10b981';
+    });
+    new Chart(document.getElementById('chartImpayes'), {
+      type: 'bar',
+      data: {
+        labels: d2.labels,
+        datasets: [{ label: "Taux d'impayés (%)", data: d2.values, backgroundColor: colors }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, max: 100 } },
+      },
+    });
+  }
+})();
+</script>
 {% endif %}
 
 <!-- ===== RECHERCHE & LISTE DES ÉTUDIANTS ===== -->

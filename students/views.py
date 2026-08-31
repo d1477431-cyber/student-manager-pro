@@ -399,96 +399,42 @@ def index(request):
         partiel = sum(1 for v in statuts.values() if v == 'Partiel')
         alertes = [s for s in all_students if statuts[s.matricule] == 'En retard'][:5]
         
-        # Graphiques (uniquement si permission finances)
-        if MATPLOTLIB_AVAILABLE:
-            import base64
-            
-            fig1, ax1 = plt.subplots(figsize=(10, 4))
-            fig1.patch.set_facecolor('none')
-            ax1.set_facecolor('none')
-            
-            raw_paiements = Payment.objects.filter(
-                date_paiement__gte=timezone.now() - timedelta(days=365)
-            ).values_list('date_paiement', 'montant').order_by('date_paiement')
-            
-            mois_dict = {}
-            for dp, montant in raw_paiements:
-                if dp:
-                    key = dp.strftime('%Y-%m') if hasattr(dp, 'strftime') else str(dp)[:7]
-                    mois_dict[key] = mois_dict.get(key, 0) + float(montant)
-            
-            paiements_list = sorted(mois_dict.items())
-            if paiements_list:
-                mois = [p[0] for p in paiements_list]
-                montants = [p[1] for p in paiements_list]
-                
-                # Gradient fill with smoother look
-                ax1.fill_between(range(len(mois)), montants, alpha=0.25, color='#4f46e5')
-                ax1.fill_between(range(len(mois)), montants, alpha=0.08, color='#818cf8')
-                
-                # Line with larger markers
-                ax1.plot(range(len(mois)), montants, color='#4f46e5', linewidth=2.5, 
-                        marker='o', markersize=10, markerfacecolor='#ffffff', 
-                        markeredgecolor='#4f46e5', markeredgewidth=2.5, zorder=3)
-                
-                # Add value labels on each point - BIGGER
-                for i, (x, y) in enumerate(zip(range(len(mois)), montants)):
-                    label = f'{y/1000:.0f}k' if y >= 1000 else f'{y:,.0f}'
-                    ax1.annotate(label, (x, y), textcoords="offset points", xytext=(0, 14),
-                                ha='center', fontsize=11, color='#1e293b', fontweight=700,
-                                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
-                                         edgecolor='#cbd5e1', linewidth=1.2, alpha=0.95))
-                
-                ax1.set_xticks(range(len(mois)))
-                ax1.set_xticklabels([m[-2:] for m in mois], fontsize=11, color='#475569', fontweight=600)
-                ax1.tick_params(colors='#475569', labelsize=10)
-                for spine in ax1.spines.values():
-                    spine.set_visible(False)
-                ax1.grid(axis='y', alpha=0.1, color='#94a3b8', linewidth=0.5)
-                ax1.set_ylim(0, max(montants) * 1.3)
-            
-            buf1 = io.BytesIO()
-            fig1.savefig(buf1, format='png', bbox_inches='tight', transparent=True, dpi=150)
-            buf1.seek(0)
-            chart_paiements = base64.b64encode(buf1.getvalue()).decode()
-            plt.close(fig1)
-            
-            fig2, ax2 = plt.subplots(figsize=(6, 3.5))
-            fig2.patch.set_facecolor('none')
-            ax2.set_facecolor('none')
-            
-            filieres_stats = Student.objects.values('filiere').annotate(
-                total=Count('matricule'), total_frais=Sum('frais_scolarite')
-            ).exclude(filiere__isnull=True).exclude(filiere='')
-            
-            if filieres_stats:
-                noms_filieres = []
-                taux_impayes = []
-                for f in filieres_stats:
-                    etuds = Student.objects.filter(filiere=f['filiere'])
-                    total_du = sum(float(s.frais_scolarite) for s in etuds)
-                    total_p = sum(float(s.total_paye()) for s in etuds)
-                    if total_du > 0:
-                        noms_filieres.append(f['filiere'])
-                        taux_impayes.append(((total_du - total_p) / total_du) * 100)
-                
-                if noms_filieres:
-                    colors_bar = ['#ef4444' if t > 50 else '#f59e0b' if t > 25 else '#10b981' for t in taux_impayes]
-                    bars = ax2.barh(noms_filieres, taux_impayes, color=colors_bar, height=0.6)
-                    ax2.set_xlabel('Taux d\'impayés (%)', color='#94a3b8', fontsize=9)
-                    ax2.tick_params(colors='#94a3b8', labelsize=8)
-                    for spine in ax2.spines.values():
-                        spine.set_visible(False)
-                    ax2.grid(axis='x', alpha=0.1)
-                    for bar, val in zip(bars, taux_impayes):
-                        ax2.text(val + 1, bar.get_y() + bar.get_height()/2, f'{val:.0f}%',
-                                va='center', fontsize=8, color='#94a3b8')
-            
-            buf2 = io.BytesIO()
-            fig2.savefig(buf2, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            buf2.seek(0)
-            chart_impayes = base64.b64encode(buf2.getvalue()).decode()
-            plt.close(fig2)
+        # Graphiques : données préparées ici, rendues en Chart.js côté navigateur
+        # (le rendu serveur via Matplotlib était coûteux en CPU, pénible sur
+        # l'hébergement gratuit — voir chart_paiements/chart_impayes ci-dessous)
+        raw_paiements = Payment.objects.filter(
+            date_paiement__gte=timezone.now() - timedelta(days=365)
+        ).values_list('date_paiement', 'montant').order_by('date_paiement')
+
+        mois_dict = {}
+        for dp, montant in raw_paiements:
+            if dp:
+                key = dp.strftime('%Y-%m') if hasattr(dp, 'strftime') else str(dp)[:7]
+                mois_dict[key] = mois_dict.get(key, 0) + float(montant)
+
+        paiements_list = sorted(mois_dict.items())
+        if paiements_list:
+            chart_paiements = {
+                'labels': [m[-2:] for m, _ in paiements_list],
+                'values': [round(v, 2) for _, v in paiements_list],
+            }
+
+        # Taux d'impayés par filière, calculé en une seule requête agrégée
+        # (au lieu d'une requête total_paye() par étudiant et par filière)
+        filieres_totals = {}
+        for s in Student.with_totals().exclude(filiere__isnull=True).exclude(filiere=''):
+            entry = filieres_totals.setdefault(s.filiere, {'du': Decimal('0.00'), 'paye': Decimal('0.00')})
+            entry['du'] += s.frais_scolarite
+            entry['paye'] += s.total_paye_annot
+
+        noms_filieres, taux_impayes = [], []
+        for filiere, totaux in filieres_totals.items():
+            if totaux['du'] > 0:
+                noms_filieres.append(filiere)
+                taux_impayes.append(round(float((totaux['du'] - totaux['paye']) / totaux['du'] * 100), 1))
+
+        if noms_filieres:
+            chart_impayes = {'labels': noms_filieres, 'values': taux_impayes}
     
     filieres = Student.objects.values_list('filiere', flat=True).distinct().exclude(filiere__isnull=True).exclude(filiere='')
     niveaux = Student.objects.values_list('niveau', flat=True).distinct().exclude(niveau__isnull=True).exclude(niveau='')
@@ -1447,163 +1393,74 @@ def stats_avancees(request):
         s_notes = [float(n.valeur) for n in s.notes.all()]
         if s_notes: niveaux_data[n].append(calculate_average(s_notes))
     moy_par_niveau = {n: round(sum(v)/len(v), 2) for n, v in niveaux_data.items() if v}
+    # Données préparées ici, graphiques rendus en Chart.js côté navigateur
+    # (le rendu serveur via Matplotlib était trop coûteux en CPU sur l'hébergement gratuit)
+    from collections import Counter
     charts = {}
-    if MATPLOTLIB_AVAILABLE:
-        import base64
-        
-        # 1. Camembert des mentions (existant)
-        labels = [k for k, v in mentions.items() if v > 0]
-        sizes = [v for v in mentions.values() if v > 0]
-        if sizes:
-            fig, ax = plt.subplots(figsize=(6, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            ax.pie(sizes, labels=labels, autopct='%1.0f%%',
-                   colors=['#10b981','#34d399','#4f46e5','#818cf8','#f59e0b','#ef4444'][:len(sizes)],
-                   textprops={'color': '#1e293b', 'fontsize': 9}, startangle=90)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['mentions'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 2. Barres des moyennes par filière (existant)
-        if moy_par_filiere:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            bar_colors = ['#10b981' if v >= 10 else '#ef4444' for v in moy_par_filiere.values()]
-            bars = ax.bar(moy_par_filiere.keys(), moy_par_filiere.values(), color=bar_colors, width=0.6, edgecolor='white', linewidth=0.5)
-            ax.set_ylim(0, 20); ax.axhline(10, color='#f59e0b', linestyle='--', linewidth=1.5, alpha=0.7)
-            ax.set_ylabel('Moyenne /20', color='#64748b', fontsize=9)
-            ax.tick_params(colors='#64748b', labelsize=9)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.15)
-            for bar, val in zip(bars, moy_par_filiere.values()):
-                ax.text(bar.get_x() + bar.get_width()/2, val + 0.3, f'{val}', ha='center', fontsize=10, color='#1e293b', fontweight='bold')
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['filieres'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 3. Histogramme distribution des moyennes (existant)
-        if notes_all:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            ax.hist(notes_all, bins=10, range=(0, 20), color='#4f46e5', alpha=0.8, edgecolor='white', linewidth=0.5)
-            ax.set_xlabel('Moyenne', color='#64748b', fontsize=9); ax.set_ylabel('Nb étudiants', color='#64748b', fontsize=9)
-            ax.axvline(10, color='#f59e0b', linestyle='--', linewidth=1.5, alpha=0.7)
-            ax.tick_params(colors='#64748b', labelsize=9)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.15)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['distribution'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 4. Barres des moyennes par niveau (existant)
-        if moy_par_niveau:
-            fig, ax = plt.subplots(figsize=(6, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            bar_colors = ['#10b981' if v >= 10 else '#ef4444' for v in moy_par_niveau.values()]
-            bars = ax.bar(moy_par_niveau.keys(), moy_par_niveau.values(), color=bar_colors, width=0.5, edgecolor='white', linewidth=0.5)
-            ax.set_ylim(0, 20); ax.axhline(10, color='#f59e0b', linestyle='--', linewidth=1.5, alpha=0.7)
-            ax.set_ylabel('Moyenne /20', color='#64748b', fontsize=9)
-            ax.tick_params(colors='#64748b', labelsize=9)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.15)
-            for bar, val in zip(bars, moy_par_niveau.values()):
-                ax.text(bar.get_x() + bar.get_width()/2, val + 0.3, f'{val}', ha='center', fontsize=10, color='#1e293b', fontweight='bold')
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['niveaux'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 5. NOUVEAU : Taux de réussite par filière (barres horizontales)
-        if filieres_data:
-            taux_par_filiere = {}
-            for f, v in filieres_data.items():
-                if v:
-                    taux_par_filiere[f] = round(sum(1 for m in v if m >= 10) / len(v) * 100, 1)
-            if taux_par_filiere:
-                fig, ax = plt.subplots(figsize=(7, 4))
-                fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-                noms = list(taux_par_filiere.keys())
-                valeurs = list(taux_par_filiere.values())
-                couleurs = ['#10b981' if v >= 50 else '#f59e0b' if v >= 30 else '#ef4444' for v in valeurs]
-                bars = ax.barh(noms, valeurs, color=couleurs, height=0.5, edgecolor='white', linewidth=0.5)
-                ax.set_xlabel('Taux de réussite (%)', color='#64748b', fontsize=9)
-                ax.tick_params(colors='#64748b', labelsize=9)
-                for spine in ax.spines.values(): spine.set_visible(False)
-                ax.grid(axis='x', alpha=0.15)
-                ax.set_xlim(0, 100)
-                for bar, val in zip(bars, valeurs):
-                    ax.text(val + 1, bar.get_y() + bar.get_height()/2, f'{val}%', va='center', fontsize=9, color='#1e293b', fontweight='bold')
-                buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-                charts['taux_reussite_filiere'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 6. NOUVEAU : Répartition par statut (camembert)
-        actifs = sum(1 for s in students if s.statut == 'Actif')
-        suspendus = sum(1 for s in students if s.statut == 'Suspendu')
-        if actifs or suspendus:
-            fig, ax = plt.subplots(figsize=(5, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            statut_labels = ['Actifs', 'Suspendus']
-            statut_sizes = [actifs, suspendus]
-            statut_sizes = [s for s in statut_sizes if s > 0]
-            statut_labels = [l for l, s in zip(statut_labels, [actifs, suspendus]) if s > 0]
-            if statut_sizes:
-                ax.pie(statut_sizes, labels=statut_labels, autopct='%1.0f%%',
-                       colors=['#10b981', '#ef4444'],
-                       textprops={'color': '#1e293b', 'fontsize': 10}, startangle=90)
-                buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-                charts['statut'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 7. NOUVEAU : Répartition par filière (camembert)
-        filiere_counts = {}
-        for s in students:
-            f = s.filiere or 'Non définie'
-            filiere_counts[f] = filiere_counts.get(f, 0) + 1
-        if filiere_counts:
-            fig, ax = plt.subplots(figsize=(6, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            f_labels = list(filiere_counts.keys())
-            f_sizes = list(filiere_counts.values())
-            f_colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16']
-            ax.pie(f_sizes, labels=f_labels, autopct='%1.0f%%',
-                   colors=f_colors[:len(f_labels)],
-                   textprops={'color': '#1e293b', 'fontsize': 9}, startangle=90)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['repartition_filieres'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 8. NOUVEAU : Évolution des inscriptions (par année/mois) - PLUS GRAND ET PLUS VISIBLE
-        from collections import Counter
-        inscriptions_par_mois = Counter()
-        for s in students:
-            if hasattr(s, 'date_ajout') and s.date_ajout:
-                mois_annee = s.date_ajout.strftime('%Y-%m')
-                inscriptions_par_mois[mois_annee] += 1
-        if inscriptions_par_mois:
-            sorted_mois = sorted(inscriptions_par_mois.items())
-            fig, ax = plt.subplots(figsize=(10, 5))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            mois_labels = [m[0][-2:] + '/' + m[0][:4] for m in sorted_mois]
-            mois_counts = [m[1] for m in sorted_mois]
-            # Barres colorées plus visibles
-            colors_bar = ['#4f46e5'] * len(mois_labels)
-            bars = ax.bar(range(len(mois_labels)), mois_counts, color=colors_bar, width=0.6, alpha=0.85, edgecolor='white', linewidth=1)
-            # Courbe par-dessus
-            ax.plot(range(len(mois_labels)), mois_counts, color='#ef4444', linewidth=3,
-                    marker='o', markersize=12, markerfacecolor='white', markeredgecolor='#ef4444', markeredgewidth=3, zorder=5)
-            # Étiquettes de valeurs plus grandes
-            for i, (x, y) in enumerate(zip(range(len(mois_labels)), mois_counts)):
-                ax.annotate(str(y), (x, y), textcoords="offset points", xytext=(0, 16),
-                           ha='center', fontsize=13, color='#1e293b', fontweight='bold',
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor='#cbd5e1', linewidth=1.2, alpha=0.95))
-            ax.set_xticks(range(len(mois_labels)))
-            ax.set_xticklabels(mois_labels, fontsize=10, color='#475569', fontweight=600)
-            ax.tick_params(colors='#475569', labelsize=10)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.15)
-            ax.set_ylabel('Inscriptions', color='#64748b', fontsize=11, fontweight=600)
-            ax.set_xlabel('Période', color='#64748b', fontsize=11, fontweight=600)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=120)
-            charts['inscriptions'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-    
+
+    # 1. Camembert des mentions
+    mentions_labels = [k for k, v in mentions.items() if v > 0]
+    mentions_values = [v for k, v in mentions.items() if v > 0]
+    if mentions_values:
+        charts['mentions'] = {'labels': mentions_labels, 'values': mentions_values}
+
+    # 2. Barres des moyennes par filière
+    if moy_par_filiere:
+        charts['filieres'] = {'labels': list(moy_par_filiere.keys()), 'values': list(moy_par_filiere.values())}
+
+    # 3. Histogramme distribution des moyennes (10 tranches de 0 à 20)
+    if notes_all:
+        bins = [0] * 10
+        for m in notes_all:
+            bins[min(int(m // 2), 9)] += 1
+        charts['distribution'] = {
+            'labels': [f'{i*2}-{i*2+2}' for i in range(10)],
+            'values': bins,
+        }
+
+    # 4. Barres des moyennes par niveau
+    if moy_par_niveau:
+        charts['niveaux'] = {'labels': list(moy_par_niveau.keys()), 'values': list(moy_par_niveau.values())}
+
+    # 5. Taux de réussite par filière
+    if filieres_data:
+        taux_par_filiere = {f: round(sum(1 for m in v if m >= 10) / len(v) * 100, 1)
+                             for f, v in filieres_data.items() if v}
+        if taux_par_filiere:
+            charts['taux_reussite_filiere'] = {
+                'labels': list(taux_par_filiere.keys()), 'values': list(taux_par_filiere.values()),
+            }
+
+    # 6. Répartition par statut
+    actifs = sum(1 for s in students if s.statut == 'Actif')
+    suspendus = sum(1 for s in students if s.statut == 'Suspendu')
+    statut_pairs = [(l, v) for l, v in [('Actifs', actifs), ('Suspendus', suspendus)] if v > 0]
+    if statut_pairs:
+        charts['statut'] = {'labels': [p[0] for p in statut_pairs], 'values': [p[1] for p in statut_pairs]}
+
+    # 7. Répartition par filière
+    filiere_counts = Counter(s.filiere or 'Non définie' for s in students)
+    if filiere_counts:
+        charts['repartition_filieres'] = {
+            'labels': list(filiere_counts.keys()), 'values': list(filiere_counts.values()),
+        }
+
+    # 8. Évolution des inscriptions par mois
+    inscriptions_par_mois = Counter()
+    for s in students:
+        if s.date_ajout:
+            inscriptions_par_mois[s.date_ajout.strftime('%Y-%m')] += 1
+    if inscriptions_par_mois:
+        sorted_mois = sorted(inscriptions_par_mois.items())
+        charts['inscriptions'] = {
+            'labels': [m[0][-2:] + '/' + m[0][:4] for m in sorted_mois],
+            'values': [m[1] for m in sorted_mois],
+        }
+
     taux_reussite = round(sum(1 for m in notes_all if m >= 10) / len(notes_all) * 100, 1) if notes_all else 0
     return render(request, 'students/stats.html', {
         'mentions': mentions, 'moy_par_filiere': moy_par_filiere, 'moy_par_niveau': moy_par_niveau,
         'taux_reussite': taux_reussite, 'total': len(students), 'charts': charts,
-        'matplotlib_available': MATPLOTLIB_AVAILABLE,
     })
 
 
@@ -1613,163 +1470,91 @@ def stats_avancees(request):
 @permission_required('can_view_finances')
 def rapports_financiers(request):
     """Page dédiée aux rapports et graphiques financiers"""
-    import base64
     from collections import Counter
 
-    students_list = Student.objects.all()
-    
-    # Statistiques financières globales
-    total_scolarite = sum(float(s.frais_scolarite) for s in students_list)
-    total_encaisse = sum(float(s.total_paye()) for s in students_list)
-    total_dettes = total_scolarite - total_encaisse
-    a_jour = sum(1 for s in students_list if s.statut_paiement() == 'À jour')
-    en_retard = sum(1 for s in students_list if s.statut_paiement() == 'En retard')
-    partiel = sum(1 for s in students_list if s.statut_paiement() == 'Partiel')
-    alertes = [s for s in students_list if s.statut_paiement() == 'En retard'][:10]
+    # Une seule requête agrégée (total payé par étudiant) plutôt que
+    # total_paye()/statut_paiement() en boucle Python (N+1 queries)
+    students_list = list(Student.with_totals())
 
+    total_scolarite = sum(float(s.frais_scolarite) for s in students_list)
+    total_encaisse = sum(float(s.total_paye_annot) for s in students_list)
+    total_dettes = total_scolarite - total_encaisse
+    statuts = {s.matricule: compute_statut_paiement(s.total_paye_annot, s.frais_scolarite) for s in students_list}
+    a_jour = sum(1 for v in statuts.values() if v == 'À jour')
+    en_retard = sum(1 for v in statuts.values() if v == 'En retard')
+    partiel = sum(1 for v in statuts.values() if v == 'Partiel')
+    alertes = [s for s in students_list if statuts[s.matricule] == 'En retard'][:10]
+
+    # Données préparées ici, graphiques rendus en Chart.js côté navigateur
     charts = {}
-    if MATPLOTLIB_AVAILABLE:
-        # 1. Évolution des paiements sur 12 mois
-        raw_paiements = Payment.objects.filter(
-            date_paiement__gte=timezone.now() - timedelta(days=365)
-        ).values_list('date_paiement', 'montant').order_by('date_paiement')
-        
-        mois_dict = {}
-        for dp, montant in raw_paiements:
-            if dp:
-                key = dp.strftime('%Y-%m') if hasattr(dp, 'strftime') else str(dp)[:7]
-                mois_dict[key] = mois_dict.get(key, 0) + float(montant)
-        
-        paiements_list = sorted(mois_dict.items())
-        if paiements_list:
-            fig, ax = plt.subplots(figsize=(10, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            mois = [p[0] for p in paiements_list]
-            montants = [p[1] for p in paiements_list]
-            
-            ax.fill_between(range(len(mois)), montants, alpha=0.25, color='#4f46e5')
-            ax.plot(range(len(mois)), montants, color='#4f46e5', linewidth=2.5,
-                    marker='o', markersize=10, markerfacecolor='#ffffff',
-                    markeredgecolor='#4f46e5', markeredgewidth=2.5, zorder=3)
-            for i, (x, y) in enumerate(zip(range(len(mois)), montants)):
-                label = f'{y/1000:.0f}k' if y >= 1000 else f'{y:,.0f}'
-                ax.annotate(label, (x, y), textcoords="offset points", xytext=(0, 14),
-                           ha='center', fontsize=11, color='#1e293b', fontweight=700,
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                                    edgecolor='#cbd5e1', linewidth=1.2, alpha=0.95))
-            ax.set_xticks(range(len(mois)))
-            ax.set_xticklabels([m[-2:] for m in mois], fontsize=11, color='#475569', fontweight=600)
-            ax.tick_params(colors='#475569', labelsize=10)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.1)
-            ax.set_ylim(0, max(montants) * 1.3)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=150)
-            charts['paiements'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 2. Taux d'impayés par filière
-        filieres_stats = Student.objects.values('filiere').annotate(
-            total=Count('matricule'), total_frais=Sum('frais_scolarite')
-        ).exclude(filiere__isnull=True).exclude(filiere='')
-        
-        if filieres_stats:
-            noms_filieres, taux_impayes = [], []
-            for f in filieres_stats:
-                etuds = Student.objects.filter(filiere=f['filiere'])
-                total_du = sum(float(s.frais_scolarite) for s in etuds)
-                total_p = sum(float(s.total_paye()) for s in etuds)
-                if total_du > 0:
-                    noms_filieres.append(f['filiere'])
-                    taux_impayes.append(((total_du - total_p) / total_du) * 100)
-            
-            if noms_filieres:
-                fig, ax = plt.subplots(figsize=(7, 4))
-                fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-                colors_bar = ['#ef4444' if t > 50 else '#f59e0b' if t > 25 else '#10b981' for t in taux_impayes]
-                bars = ax.barh(noms_filieres, taux_impayes, color=colors_bar, height=0.6)
-                ax.set_xlabel("Taux d'impayés (%)", color='#64748b', fontsize=9)
-                ax.tick_params(colors='#64748b', labelsize=9)
-                for spine in ax.spines.values(): spine.set_visible(False)
-                ax.grid(axis='x', alpha=0.1)
-                for bar, val in zip(bars, taux_impayes):
-                    ax.text(val + 1, bar.get_y() + bar.get_height()/2, f'{val:.0f}%',
-                           va='center', fontsize=9, color='#1e293b', fontweight='bold')
-                buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-                charts['impayes'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 3. Répartition des statuts de paiement (camembert)
-        fig, ax = plt.subplots(figsize=(5, 4))
-        fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-        paiement_labels, paiement_sizes = [], []
-        paiement_data = [('À jour', a_jour), ('Partiel', partiel), ('En retard', en_retard)]
-        for label, size in paiement_data:
-            if size > 0:
-                paiement_labels.append(label)
-                paiement_sizes.append(size)
-        if paiement_sizes:
-            ax.pie(paiement_sizes, labels=paiement_labels, autopct='%1.0f%%',
-                   colors=['#10b981', '#f59e0b', '#ef4444'],
-                   textprops={'color': '#1e293b', 'fontsize': 10}, startangle=90)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['statuts_paiement'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 4. Montants par filière (barres)
-        filieres_montants = {}
-        for s in students_list:
-            f = s.filiere or 'Non définie'
-            if f not in filieres_montants:
-                filieres_montants[f] = {'scolarite': 0, 'paye': 0}
-            filieres_montants[f]['scolarite'] += float(s.frais_scolarite)
-            filieres_montants[f]['paye'] += float(s.total_paye())
-        
-        if filieres_montants:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            f_names = list(filieres_montants.keys())
-            f_scolarite = [filieres_montants[f]['scolarite'] for f in f_names]
-            f_paye = [filieres_montants[f]['paye'] for f in f_names]
-            
-            x = range(len(f_names))
-            width = 0.35
-            ax.bar([i - width/2 for i in x], f_scolarite, width, label='Scolarité', color='#4f46e5', alpha=0.8)
-            ax.bar([i + width/2 for i in x], f_paye, width, label='Encaissé', color='#10b981', alpha=0.8)
-            ax.set_xticks(list(x))
-            ax.set_xticklabels(f_names, fontsize=8, color='#475569')
-            ax.tick_params(colors='#64748b', labelsize=9)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.1)
-            ax.legend(fontsize=9)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['montants_filieres'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-        
-        # 5. Évolution du solde total
-        paiements_par_mois = Counter()
-        for p in Payment.objects.all():
-            if p.date_paiement:
-                key = p.date_paiement.strftime('%Y-%m')
-                paiements_par_mois[key] += float(p.montant)
-        
-        if paiements_par_mois:
-            sorted_p = sorted(paiements_par_mois.items())
-            fig, ax = plt.subplots(figsize=(8, 3.5))
-            fig.patch.set_facecolor('none'); ax.set_facecolor('none')
-            p_mois = [m[0][-2:] + '/' + m[0][:4] for m in sorted_p]
-            p_montants = [m[1] for m in sorted_p]
-            ax.fill_between(range(len(p_mois)), p_montants, alpha=0.2, color='#10b981')
-            ax.plot(range(len(p_mois)), p_montants, color='#10b981', linewidth=2.5,
-                    marker='o', markersize=8, markerfacecolor='white', markeredgecolor='#10b981', markeredgewidth=2)
-            for i, (x, y) in enumerate(zip(range(len(p_mois)), p_montants)):
-                label = f'{y/1000:.0f}k' if y >= 1000 else f'{y:,.0f}'
-                ax.annotate(label, (x, y), textcoords="offset points", xytext=(0, 10),
-                           ha='center', fontsize=9, color='#1e293b', fontweight='bold')
-            ax.set_xticks(range(len(p_mois)))
-            ax.set_xticklabels(p_mois, fontsize=8, color='#475569')
-            ax.tick_params(colors='#475569', labelsize=8)
-            for spine in ax.spines.values(): spine.set_visible(False)
-            ax.grid(axis='y', alpha=0.1)
-            ax.set_ylabel('Encaissements (FCFA)', color='#64748b', fontsize=9)
-            buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', transparent=True, dpi=100)
-            charts['encaissements'] = base64.b64encode(buf.getvalue()).decode(); plt.close(fig)
-    
+
+    # 1. Évolution des paiements sur 12 mois
+    raw_paiements = Payment.objects.filter(
+        date_paiement__gte=timezone.now() - timedelta(days=365)
+    ).values_list('date_paiement', 'montant').order_by('date_paiement')
+
+    mois_dict = {}
+    for dp, montant in raw_paiements:
+        if dp:
+            key = dp.strftime('%Y-%m') if hasattr(dp, 'strftime') else str(dp)[:7]
+            mois_dict[key] = mois_dict.get(key, 0) + float(montant)
+
+    paiements_list = sorted(mois_dict.items())
+    if paiements_list:
+        charts['paiements'] = {
+            'labels': [m[-2:] for m, _ in paiements_list],
+            'values': [round(v, 2) for _, v in paiements_list],
+        }
+
+    # 2. Taux d'impayés par filière (agrégé en Python à partir de with_totals(), pas de requête par filière)
+    filieres_totals = {}
+    for s in students_list:
+        if not s.filiere:
+            continue
+        entry = filieres_totals.setdefault(s.filiere, {'du': Decimal('0.00'), 'paye': Decimal('0.00')})
+        entry['du'] += s.frais_scolarite
+        entry['paye'] += s.total_paye_annot
+
+    noms_filieres, taux_impayes = [], []
+    for filiere, totaux in filieres_totals.items():
+        if totaux['du'] > 0:
+            noms_filieres.append(filiere)
+            taux_impayes.append(round(float((totaux['du'] - totaux['paye']) / totaux['du'] * 100), 1))
+
+    if noms_filieres:
+        charts['impayes'] = {'labels': noms_filieres, 'values': taux_impayes}
+
+    # 3. Répartition des statuts de paiement
+    statut_pairs = [(l, v) for l, v in [('À jour', a_jour), ('Partiel', partiel), ('En retard', en_retard)] if v > 0]
+    if statut_pairs:
+        charts['statuts_paiement'] = {'labels': [p[0] for p in statut_pairs], 'values': [p[1] for p in statut_pairs]}
+
+    # 4. Montants par filière (scolarité due vs encaissée)
+    filieres_montants = {}
+    for s in students_list:
+        f = s.filiere or 'Non définie'
+        entry = filieres_montants.setdefault(f, {'scolarite': 0.0, 'paye': 0.0})
+        entry['scolarite'] += float(s.frais_scolarite)
+        entry['paye'] += float(s.total_paye_annot)
+    if filieres_montants:
+        charts['montants_filieres'] = {
+            'labels': list(filieres_montants.keys()),
+            'scolarite': [round(v['scolarite'], 2) for v in filieres_montants.values()],
+            'paye': [round(v['paye'], 2) for v in filieres_montants.values()],
+        }
+
+    # 5. Évolution des encaissements par mois
+    paiements_par_mois = Counter()
+    for p in Payment.objects.all():
+        if p.date_paiement:
+            paiements_par_mois[p.date_paiement.strftime('%Y-%m')] += float(p.montant)
+    if paiements_par_mois:
+        sorted_p = sorted(paiements_par_mois.items())
+        charts['encaissements'] = {
+            'labels': [m[-2:] + '/' + m[:4] for m, _ in sorted_p],
+            'values': [round(v, 2) for _, v in sorted_p],
+        }
+
     return render(request, 'students/rapports_financiers.html', {
         'total_scolarite': total_scolarite,
         'total_encaisse': total_encaisse,
@@ -1779,7 +1564,6 @@ def rapports_financiers(request):
         'partiel': partiel,
         'alertes': alertes,
         'charts': charts,
-        'matplotlib_available': MATPLOTLIB_AVAILABLE,
     })
 
 

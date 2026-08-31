@@ -74,7 +74,7 @@
 {% endif %}
 
 <!-- Graphiques financiers -->
-{% if matplotlib_available and charts %}
+{% if charts %}
 <div class="section-title">
     {% icon 'trending' 'w-5 h-5' %}
     <span>Analyses graphiques financières</span>
@@ -84,43 +84,106 @@
     {% if charts.paiements %}
     <div class="card dashboard-card" style="grid-column: 1 / -1;">
         <h3>{% icon 'trending' 'w-5 h-5' %} Évolution des paiements (12 mois)</h3>
-        <img src="data:image/png;base64,{{ charts.paiements }}" alt="Évolution des paiements" style="width:100%;display:block;margin:0 auto;">
+        <canvas id="chartPaiementsFin"></canvas>
+        {{ charts.paiements|json_script:"data-paiements-fin" }}
     </div>
     {% endif %}
 
     {% if charts.encaissements %}
     <div class="card dashboard-card">
         <h3>{% icon 'chart_bar' 'w-5 h-5' %} Encaissements par mois</h3>
-        <img src="data:image/png;base64,{{ charts.encaissements }}" alt="Encaissements mensuels" style="width:100%;display:block;margin:0 auto;">
+        <canvas id="chartEncaissements"></canvas>
+        {{ charts.encaissements|json_script:"data-encaissements" }}
     </div>
     {% endif %}
 
     {% if charts.impayes %}
     <div class="card dashboard-card">
         <h3>{% icon 'debt' 'w-5 h-5' %} Taux d'impayés par filière</h3>
-        <img src="data:image/png;base64,{{ charts.impayes }}" alt="Taux d'impayés" style="width:100%;display:block;margin:0 auto;">
+        <canvas id="chartImpayesFin"></canvas>
+        {{ charts.impayes|json_script:"data-impayes-fin" }}
     </div>
     {% endif %}
 
     {% if charts.statuts_paiement %}
     <div class="card dashboard-card">
         <h3>{% icon 'check_circle' 'w-5 h-5' %} Répartition des statuts de paiement</h3>
-        <img src="data:image/png;base64,{{ charts.statuts_paiement }}" alt="Statuts de paiement" style="width:100%;max-width:450px;display:block;margin:0 auto;">
+        <div style="max-width:450px;margin:0 auto;"><canvas id="chartStatutsPaiement"></canvas></div>
+        {{ charts.statuts_paiement|json_script:"data-statuts-paiement" }}
     </div>
     {% endif %}
 
     {% if charts.montants_filieres %}
     <div class="card dashboard-card" style="grid-column: 1 / -1;">
         <h3>{% icon 'money' 'w-5 h-5' %} Montants par filière (Scolarité vs Encaissé)</h3>
-        <img src="data:image/png;base64,{{ charts.montants_filieres }}" alt="Montants par filière" style="width:100%;display:block;margin:0 auto;">
+        <canvas id="chartMontantsFilieres"></canvas>
+        {{ charts.montants_filieres|json_script:"data-montants-filieres" }}
     </div>
     {% endif %}
 </div>
-{% elif not matplotlib_available %}
-<div class="card" style="text-align:center;padding:40px;">
-    <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">{% icon 'database' 'w-12 h-12' %}</div>
-    <h3>Matplotlib non installé</h3>
-    <p class="text-muted" style="margin-top:8px;">Installez matplotlib pour voir les graphiques : <code>pip install matplotlib</code></p>
-</div>
+
+<script src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  function readData(id) {
+    var el = document.getElementById(id);
+    return el ? JSON.parse(el.textContent) : null;
+  }
+
+  var d1 = readData('data-paiements-fin');
+  if (d1) {
+    new Chart(document.getElementById('chartPaiementsFin'), {
+      type: 'line',
+      data: { labels: d1.labels, datasets: [{ label: 'Paiements (FCFA)', data: d1.values,
+        borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.15)', fill: true, tension: 0.35 }] },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+  }
+
+  var d2 = readData('data-encaissements');
+  if (d2) {
+    new Chart(document.getElementById('chartEncaissements'), {
+      type: 'line',
+      data: { labels: d2.labels, datasets: [{ label: 'Encaissements (FCFA)', data: d2.values,
+        borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.15)', fill: true, tension: 0.35 }] },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+  }
+
+  var d3 = readData('data-impayes-fin');
+  if (d3) {
+    var colors3 = d3.values.map(function (v) { return v > 50 ? '#ef4444' : v > 25 ? '#f59e0b' : '#10b981'; });
+    new Chart(document.getElementById('chartImpayesFin'), {
+      type: 'bar',
+      data: { labels: d3.labels, datasets: [{ label: "Taux d'impayés (%)", data: d3.values, backgroundColor: colors3 }] },
+      options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { max: 100 } } },
+    });
+  }
+
+  var d4 = readData('data-statuts-paiement');
+  if (d4) {
+    new Chart(document.getElementById('chartStatutsPaiement'), {
+      type: 'pie',
+      data: { labels: d4.labels, datasets: [{ data: d4.values, backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+    });
+  }
+
+  var d5 = readData('data-montants-filieres');
+  if (d5) {
+    new Chart(document.getElementById('chartMontantsFilieres'), {
+      type: 'bar',
+      data: {
+        labels: d5.labels,
+        datasets: [
+          { label: 'Scolarité', data: d5.scolarite, backgroundColor: '#4f46e5' },
+          { label: 'Encaissé', data: d5.paye, backgroundColor: '#10b981' },
+        ],
+      },
+      options: { responsive: true },
+    });
+  }
+})();
+</script>
 {% endif %}
 {% endblock %}

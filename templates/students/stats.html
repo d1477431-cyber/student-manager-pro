@@ -36,94 +36,135 @@
 </div>
 
 <!-- Graphiques -->
-{% if matplotlib_available and charts %}
+{% if charts %}
 <div class="dashboard-grid">
     {% if charts.mentions %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'chart_pie' 'w-5 h-5' %}
-            Répartition des mentions
-        </h3>
-        <img src="data:image/png;base64,{{ charts.mentions }}" alt="Répartition des mentions" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+        <h3>{% icon 'chart_pie' 'w-5 h-5' %} Répartition des mentions</h3>
+        <div style="max-width:500px;margin:0 auto;"><canvas id="chartMentions"></canvas></div>
+        {{ charts.mentions|json_script:"data-mentions" }}
     </div>
     {% endif %}
 
     {% if charts.statut %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'check_circle' 'w-5 h-5' %}
-            Répartition par statut
-        </h3>
-        <img src="data:image/png;base64,{{ charts.statut }}" alt="Répartition par statut" style="width:100%;max-width:400px;display:block;margin:0 auto;">
+        <h3>{% icon 'check_circle' 'w-5 h-5' %} Répartition par statut</h3>
+        <div style="max-width:400px;margin:0 auto;"><canvas id="chartStatut"></canvas></div>
+        {{ charts.statut|json_script:"data-statut" }}
     </div>
     {% endif %}
 
     {% if charts.repartition_filieres %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'users' 'w-5 h-5' %}
-            Répartition par filière
-        </h3>
-        <img src="data:image/png;base64,{{ charts.repartition_filieres }}" alt="Répartition par filière" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+        <h3>{% icon 'users' 'w-5 h-5' %} Répartition par filière</h3>
+        <div style="max-width:500px;margin:0 auto;"><canvas id="chartRepartitionFilieres"></canvas></div>
+        {{ charts.repartition_filieres|json_script:"data-repartition-filieres" }}
     </div>
     {% endif %}
 
     {% if charts.filieres %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'chart_bar' 'w-5 h-5' %}
-            Moyenne par filière
-        </h3>
-        <img src="data:image/png;base64,{{ charts.filieres }}" alt="Moyenne par filière" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+        <h3>{% icon 'chart_bar' 'w-5 h-5' %} Moyenne par filière</h3>
+        <canvas id="chartFilieres"></canvas>
+        {{ charts.filieres|json_script:"data-filieres" }}
     </div>
     {% endif %}
 
     {% if charts.niveaux %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'schedule' 'w-5 h-5' %}
-            Moyenne par niveau
-        </h3>
-        <img src="data:image/png;base64,{{ charts.niveaux }}" alt="Moyenne par niveau" style="width:100%;max-width:500px;display:block;margin:0 auto;">
+        <h3>{% icon 'schedule' 'w-5 h-5' %} Moyenne par niveau</h3>
+        <canvas id="chartNiveaux"></canvas>
+        {{ charts.niveaux|json_script:"data-niveaux" }}
     </div>
     {% endif %}
 
     {% if charts.taux_reussite_filiere %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'trophy' 'w-5 h-5' %}
-            Taux de réussite par filière
-        </h3>
-        <img src="data:image/png;base64,{{ charts.taux_reussite_filiere }}" alt="Taux de réussite par filière" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+        <h3>{% icon 'trophy' 'w-5 h-5' %} Taux de réussite par filière</h3>
+        <canvas id="chartTauxReussite"></canvas>
+        {{ charts.taux_reussite_filiere|json_script:"data-taux-reussite" }}
     </div>
     {% endif %}
 
     {% if charts.distribution %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'chart' 'w-5 h-5' %}
-            Distribution des moyennes
-        </h3>
-        <img src="data:image/png;base64,{{ charts.distribution }}" alt="Distribution des moyennes" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+        <h3>{% icon 'chart' 'w-5 h-5' %} Distribution des moyennes</h3>
+        <canvas id="chartDistribution"></canvas>
+        {{ charts.distribution|json_script:"data-distribution" }}
     </div>
     {% endif %}
 
     {% if charts.inscriptions %}
     <div class="card dashboard-card">
-        <h3>
-            {% icon 'trending' 'w-5 h-5' %}
-            Évolution des inscriptions
-        </h3>
-        <img src="data:image/png;base64,{{ charts.inscriptions }}" alt="Évolution des inscriptions" style="width:100%;max-width:600px;display:block;margin:0 auto;">
+        <h3>{% icon 'trending' 'w-5 h-5' %} Évolution des inscriptions</h3>
+        <canvas id="chartInscriptions"></canvas>
+        {{ charts.inscriptions|json_script:"data-inscriptions" }}
     </div>
     {% endif %}
 </div>
-{% elif not matplotlib_available %}
-<div class="card" style="text-align:center;padding:40px;">
-    <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">{% icon 'database' 'w-12 h-12' %}</div>
-    <h3>Matplotlib non installé</h3>
-    <p class="text-muted" style="margin-top:8px;">Installez matplotlib pour voir les graphiques : <code>pip install matplotlib</code></p>
-</div>
+
+<script src="{% static 'js/vendor/chart.umd.min.js' %}"></script>
+<script>
+(function () {
+  var PALETTE = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'];
+
+  function readData(id) {
+    var el = document.getElementById(id);
+    return el ? JSON.parse(el.textContent) : null;
+  }
+
+  function makePie(canvasId, dataId) {
+    var d = readData(dataId);
+    if (!d) return;
+    new Chart(document.getElementById(canvasId), {
+      type: 'pie',
+      data: { labels: d.labels, datasets: [{ data: d.values, backgroundColor: PALETTE }] },
+      options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+    });
+  }
+
+  function makeBar(canvasId, dataId, opts) {
+    opts = opts || {};
+    var d = readData(dataId);
+    if (!d) return;
+    var colors = opts.threshold != null
+      ? d.values.map(function (v) { return v >= opts.threshold ? '#10b981' : '#ef4444'; })
+      : '#4f46e5';
+    new Chart(document.getElementById(canvasId), {
+      type: 'bar',
+      data: { labels: d.labels, datasets: [{ label: opts.label || '', data: d.values, backgroundColor: colors }] },
+      options: {
+        indexAxis: opts.horizontal ? 'y' : 'x',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: opts.max ? { x: opts.horizontal ? { max: opts.max } : {}, y: !opts.horizontal ? { max: opts.max } : {} } : {},
+      },
+    });
+  }
+
+  makePie('chartMentions', 'data-mentions');
+  makePie('chartStatut', 'data-statut');
+  makePie('chartRepartitionFilieres', 'data-repartition-filieres');
+  makeBar('chartFilieres', 'data-filieres', { label: 'Moyenne /20', threshold: 10, max: 20 });
+  makeBar('chartNiveaux', 'data-niveaux', { label: 'Moyenne /20', threshold: 10, max: 20 });
+  makeBar('chartTauxReussite', 'data-taux-reussite', { label: 'Taux de réussite (%)', horizontal: true, threshold: 50, max: 100 });
+  makeBar('chartDistribution', 'data-distribution', { label: "Nb d'étudiants" });
+
+  var insc = readData('data-inscriptions');
+  if (insc) {
+    new Chart(document.getElementById('chartInscriptions'), {
+      data: {
+        labels: insc.labels,
+        datasets: [
+          { type: 'bar', label: 'Inscriptions', data: insc.values, backgroundColor: 'rgba(79,70,229,0.7)' },
+          { type: 'line', label: 'Tendance', data: insc.values, borderColor: '#ef4444', borderWidth: 3, tension: 0.3, pointRadius: 5 },
+        ],
+      },
+      options: { responsive: true, plugins: { legend: { display: false } } },
+    });
+  }
+})();
+</script>
 {% endif %}
 
 <!-- Tableau des moyennes par filière -->
