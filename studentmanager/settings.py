@@ -195,7 +195,17 @@ STORAGES = {
         ),
     },
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        # Le stockage "manifest" (hash dans le nom de fichier, cache navigateur
+        # long) exige d'avoir lance `collectstatic` a chaque changement de
+        # fichier statique, sinon {% static %} leve une erreur 500 des qu'un
+        # fichier n'est pas encore dans le manifeste (staticfiles.json). Genant
+        # en dev local ou l'on modifie sans cesse le CSS/JS. On ne l'utilise
+        # donc qu'en production (DEBUG=False), ou collectstatic tourne au
+        # deploiement (voir Procfile/render.yaml).
+        'BACKEND': (
+            'whitenoise.storage.CompressedManifestStaticFilesStorage' if not DEBUG
+            else 'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
     },
 }
 
