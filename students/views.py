@@ -57,6 +57,19 @@ def health_check(request):
     return HttpResponse("OK", status=200)
 
 
+def debug_ip(request):
+    """Vue temporaire de diagnostic : verifie ce que voit vraiment l'app
+    derriere Cloudflare/Render (X-Forwarded-For vs REMOTE_ADDR), pour
+    confirmer si le rate limiter identifie correctement chaque visiteur.
+    A retirer une fois le diagnostic termine."""
+    return JsonResponse({
+        'REMOTE_ADDR': request.META.get('REMOTE_ADDR'),
+        'HTTP_X_FORWARDED_FOR': request.META.get('HTTP_X_FORWARDED_FOR'),
+        'HTTP_CF_CONNECTING_IP': request.META.get('HTTP_CF_CONNECTING_IP'),
+        'HTTP_X_REAL_IP': request.META.get('HTTP_X_REAL_IP'),
+    })
+
+
 def _authenticate_fallback(username, password):
     if not username or not password:
         return None
