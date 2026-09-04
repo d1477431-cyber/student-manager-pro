@@ -27,11 +27,33 @@ RATE_LIMIT_BODY = (
 
 
 def get_client_ip(request):
-    """Best-effort : IP réelle derrière un proxy (Render/Cloudflare) si présente."""
+    """IP réelle du visiteur derrière Cloudflare/Render, si identifiable.
+
+    Ordre de préférence :
+    1. CF-Connecting-IP : posée par Cloudflare lui-même à partir de la vraie
+       connexion TCP — un client ne peut pas la falsifier en l'envoyant dans
+       sa propre requête (Cloudflare écrase toute valeur fournie par le client).
+    2. Premier maillon de X-Forwarded-For (client -> Cloudflare -> Render) :
+       fiable dans cette chaîne précise, mais un peu moins robuste si jamais
+       un intermédiaire ne se comporte pas comme attendu.
+    3. REMOTE_ADDR : sur Render, c'est systématiquement 127.0.0.1 (le proxy
+       interne se connecte en local à l'appli) — la MÊME valeur pour TOUS
+       les visiteurs. L'utiliser pour du rate limiting grouperait tout le
+       monde sous un seul compteur (bug réel constaté : un pic de trafic
+       bloquait tous les visiteurs, pas seulement la source). On retourne
+       donc None plutôt que cette valeur inutilisable — à l'appelant de
+       laisser passer la requête (fail-open) faute d'identifiant fiable.
+    """
+    cf_ip = request.META.get('HTTP_CF_CONNECTING_IP')
+    if cf_ip:
+        return cf_ip.strip()
     xff = request.META.get('HTTP_X_FORWARDED_FOR')
     if xff:
         return xff.split(',')[0].strip()
-    return request.META.get('REMOTE_ADDR', 'unknown')
+    remote_addr = request.META.get('REMOTE_ADDR')
+    if remote_addr and remote_addr not in ('127.0.0.1', '::1'):
+        return remote_addr
+    return None
 
 
 def _rate_limited_response():
@@ -48,6 +70,10 @@ def rate_limit(key_prefix, max_attempts, window_seconds):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
             ip = get_client_ip(request)
+            if ip is None:
+                # Pas d'identifiant fiable : mieux vaut laisser passer que de
+                # regrouper tous les visiteurs sous un seul compteur partagé.
+                return view_func(request, *args, **kwargs)
             cache_key = f'ratelimit:{key_prefix}:{ip}'
             attempts = cache.get(cache_key, 0)
             if attempts >= max_attempts:
@@ -85,6 +111,10 @@ class GlobalRateLimitMiddleware:
         if os.environ.get('PYTEST_CURRENT_TEST'):
             return self.get_response(request)
         ip = get_client_ip(request)
+        if ip is None:
+            # Pas d'identifiant fiable : laisser passer plutot que de
+            # regrouper tous les visiteurs sous un seul compteur partage.
+            return self.get_response(request)
         cache_key = f'ratelimit:global:{ip}'
         count = cache.get(cache_key, 0)
         if count >= self.MAX_REQUESTS:

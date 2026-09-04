@@ -588,19 +588,32 @@ class TestRateLimiting:
         cache.clear()  # éviter toute fuite d'état entre tests (compteurs partagés par IP)
 
     def test_register_blocked_after_too_many_attempts(self, client):
+        # REMOTE_ADDR explicite : le client de test utilise 127.0.0.1 par
+        # défaut, désormais ignoré par get_client_ip() (c'est la valeur que
+        # Render donne à TOUTE requête - l'utiliser identifierait tout le
+        # monde pareil, voir get_client_ip).
+        ip = {'REMOTE_ADDR': '198.51.100.7'}
         for _ in range(5):
-            response = client.get(reverse('register'))
+            response = client.get(reverse('register'), **ip)
             assert response.status_code == 200
         # 6e requête sur la même fenêtre : bloquée
-        response = client.get(reverse('register'))
+        response = client.get(reverse('register'), **ip)
         assert response.status_code == 429
 
     def test_login_blocked_after_too_many_attempts(self, client):
+        ip = {'REMOTE_ADDR': '198.51.100.8'}
         for _ in range(20):
-            response = client.get(reverse('login'))
+            response = client.get(reverse('login'), **ip)
             assert response.status_code == 200
-        response = client.get(reverse('login'))
+        response = client.get(reverse('login'), **ip)
         assert response.status_code == 429
+
+    def test_no_reliable_ip_fails_open(self, client):
+        """Sans IP identifiable (REMOTE_ADDR=127.0.0.1, le cas Render), la
+        requête doit passer plutôt que d'être bloquée avec tout le monde."""
+        for _ in range(10):
+            response = client.get(reverse('register'), REMOTE_ADDR='127.0.0.1')
+            assert response.status_code == 200
 
     def test_global_middleware_blocks_after_max_requests(self, rf):
         """Teste la logique du middleware directement : le court-circuit
