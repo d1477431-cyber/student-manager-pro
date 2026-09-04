@@ -18,9 +18,10 @@ from django.utils import timezone
 from .forms import StudentForm, ChangePasswordForm, RegisterForm
 from .logic import calculate_average, get_appreciation, parse_notes, sanitize_cell, compute_statut_paiement
 from .realtime import notify_user
+from .ratelimit import rate_limit
 from .models import (
     Student, CustomUser, Log, Payment, Echeance, Absence, Cours, Message, Note,
-    Annonce, Notification, ALLOWED_ATTACHMENT_EXTENSIONS,
+    Annonce, Notification, ALLOWED_ATTACHMENT_EXTENSIONS, MAX_UPLOAD_SIZE,
 )
 
 try:
@@ -62,6 +63,7 @@ def _authenticate_fallback(username, password):
     return authenticate(username=username, password=password)
 
 
+@rate_limit('login', max_attempts=20, window_seconds=300)
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('index')
@@ -132,6 +134,7 @@ def login_view(request):
     return render(request, 'registration/login.html', {'error': error_message})
 
 
+@rate_limit('register', max_attempts=5, window_seconds=3600)
 def register_view(request):
     """Auto-inscription d'un compte Professeur, en attente d'approbation par un admin."""
     if request.user.is_authenticated:
@@ -891,6 +894,12 @@ def annonces_view(request):
                     f"{', '.join(ALLOWED_ATTACHMENT_EXTENSIONS)}."
                 )
                 return redirect('annonces')
+            if fichier_joint.size > MAX_UPLOAD_SIZE:
+                messages.error(
+                    request,
+                    f"❌ Fichier trop volumineux (max {MAX_UPLOAD_SIZE // (1024 * 1024)} Mo)."
+                )
+                return redirect('annonces')
 
         if titre and contenu:
             Annonce.objects.create(
@@ -997,10 +1006,17 @@ def lire_message(request, message_id):
 def import_csv(request):
     if request.method == 'POST' and request.FILES.get('fichier_csv'):
         fichier = request.FILES['fichier_csv']
+        if fichier.size > MAX_UPLOAD_SIZE:
+            messages.error(request, f"❌ Fichier trop volumineux (max {MAX_UPLOAD_SIZE // (1024 * 1024)} Mo).")
+            return redirect('import_csv')
         decoded = fichier.read().decode('utf-8-sig')
         reader = csv.DictReader(io.StringIO(decoded))
         ajoutes = erreurs = 0
-        for row in reader:
+        MAX_ROWS = 5000  # au-dela, le traitement synchrone dans la requete devient trop long
+        for i, row in enumerate(reader):
+            if i >= MAX_ROWS:
+                messages.warning(request, f"⚠️ Import arrêté après {MAX_ROWS} lignes (limite de sécurité).")
+                break
             try:
                 matricule = str(row.get('Matricule', '') or row.get('matricule', '')).strip()
                 nom = str(row.get('Nom', '') or row.get('nom', '')).strip().capitalize()

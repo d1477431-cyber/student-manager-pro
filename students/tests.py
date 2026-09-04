@@ -579,5 +579,48 @@ class TestPagination:
         assert len(data['results']) <= 25  # 25 par défaut
 
 
+# ===== TESTS ANTI-DoS (rate limiting, tailles d'upload) =====
+
+@pytest.mark.django_db
+class TestRateLimiting:
+    def setup_method(self):
+        from django.core.cache import cache
+        cache.clear()  # éviter toute fuite d'état entre tests (compteurs partagés par IP)
+
+    def test_register_blocked_after_too_many_attempts(self, client):
+        for _ in range(5):
+            response = client.get(reverse('register'))
+            assert response.status_code == 200
+        # 6e requête sur la même fenêtre : bloquée
+        response = client.get(reverse('register'))
+        assert response.status_code == 429
+
+    def test_login_blocked_after_too_many_attempts(self, client):
+        for _ in range(20):
+            response = client.get(reverse('login'))
+            assert response.status_code == 200
+        response = client.get(reverse('login'))
+        assert response.status_code == 429
+
+
+@pytest.mark.django_db
+class TestUploadSizeLimit:
+    def test_validate_file_size_rejects_oversized_file(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.core.exceptions import ValidationError
+        from .models import validate_file_size, MAX_UPLOAD_SIZE
+
+        oversized = SimpleUploadedFile('big.png', b'x' * (MAX_UPLOAD_SIZE + 1))
+        with pytest.raises(ValidationError):
+            validate_file_size(oversized)
+
+    def test_validate_file_size_accepts_small_file(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import validate_file_size
+
+        small = SimpleUploadedFile('small.png', b'x' * 1024)
+        validate_file_size(small)  # ne doit pas lever d'exception
+
+
 # ===== CONFIGURATION PYTEST =====
 pytestmark = pytest.mark.django_db

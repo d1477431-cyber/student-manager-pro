@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.hashers import make_password
 from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 import json
 import datetime
@@ -11,6 +12,16 @@ import datetime
 # non exécutables et non interprétables par un navigateur (pas de .html/.svg/.js)
 # afin d'éviter le stockage/service de contenu pouvant déclencher du XSS stocké.
 ALLOWED_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'gif']
+
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 Mo : Django n'impose aucune limite par defaut
+# sur les fichiers uploades (DATA_UPLOAD_MAX_MEMORY_SIZE ne s'applique pas aux
+# fichiers) - sans ca, un upload repete de fichiers volumineux epuise le
+# stockage Supabase/la bande passante (DoS applicatif a faible effort).
+
+
+def validate_file_size(value):
+    if value.size > MAX_UPLOAD_SIZE:
+        raise ValidationError(f"Le fichier ne doit pas dépasser {MAX_UPLOAD_SIZE // (1024 * 1024)} Mo.")
 
 # Modèle pour les utilisateurs (étend le modèle User de Django)
 class CustomUser(AbstractUser):
@@ -121,7 +132,10 @@ class Student(models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
     age = models.IntegerField()
-    photo = models.ImageField(upload_to='photos/', blank=True, null=True)
+    photo = models.ImageField(
+        upload_to='photos/', blank=True, null=True,
+        validators=[validate_file_size],
+    )
     date_ajout = models.DateTimeField(default=timezone.now)
     email = models.EmailField(blank=True, null=True)
     telephone = models.CharField(max_length=20, blank=True, null=True)
@@ -368,7 +382,10 @@ class Annonce(models.Model):
     est_publiee = models.BooleanField(default=True)
     fichier_joint = models.FileField(
         upload_to='annonces/', blank=True, null=True,
-        validators=[FileExtensionValidator(allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS)],
+        validators=[
+            FileExtensionValidator(allowed_extensions=ALLOWED_ATTACHMENT_EXTENSIONS),
+            validate_file_size,
+        ],
     )
 
     class Meta:
