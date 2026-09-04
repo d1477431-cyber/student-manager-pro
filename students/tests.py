@@ -602,6 +602,28 @@ class TestRateLimiting:
         response = client.get(reverse('login'))
         assert response.status_code == 429
 
+    def test_global_middleware_blocks_after_max_requests(self, rf):
+        """Teste la logique du middleware directement : le court-circuit
+        PYTEST_CURRENT_TEST (nécessaire pour ne pas polluer le reste de la
+        suite - voir GlobalRateLimitMiddleware.__call__) est désactivé le
+        temps du test pour vérifier le vrai comportement de blocage."""
+        import os
+        from unittest.mock import patch
+        from django.http import HttpResponse
+        from .ratelimit import GlobalRateLimitMiddleware
+
+        middleware = GlobalRateLimitMiddleware(lambda request: HttpResponse('ok'))
+        request = rf.get('/')
+        request.META['REMOTE_ADDR'] = '203.0.113.42'  # IP dediee, evite toute collision de compteur
+
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('PYTEST_CURRENT_TEST', None)
+            for _ in range(GlobalRateLimitMiddleware.MAX_REQUESTS):
+                response = middleware(request)
+                assert response.status_code == 200
+            response = middleware(request)
+            assert response.status_code == 429
+
 
 @pytest.mark.django_db
 class TestUploadSizeLimit:
